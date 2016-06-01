@@ -417,6 +417,8 @@ qboolean PC_Int_Parse(int handle, int *i) {
 	pc_token_t token;
 	int negative = qfalse;
 
+	if (!i)
+		return qfalse;
 	if (!trap_PC_ReadToken(handle, &token))
 		return qfalse;
 	if (token.string[0] == '-') {
@@ -606,18 +608,23 @@ void Fade(int *flags, float *f, float clamp, int *nextTime, int offsetTime, qboo
 
 void Window_Paint(Window *w, float fadeAmount, float fadeClamp, float fadeCycle) {
   //float bordersize = 0;
-  vec4_t color;
-  rectDef_t fillRect = w->rect;
+  vec4_t color = {0};
+  rectDef_t fillRect;
 
+  if ( w == NULL ) {
+    return;
+  }
 
   if (debugMode) {
     color[0] = color[1] = color[2] = color[3] = 1;
     DC->drawRect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, 1, color);
   }
 
-  if (w == NULL || (w->style == 0 && w->border == 0)) {
+  if (w->style == 0 && w->border == 0) {
     return;
   }
+
+  fillRect = w->rect;
 
   if (w->border != 0) {
     fillRect.x += w->borderSize;
@@ -1491,7 +1498,7 @@ float Item_Slider_ThumbPosition(itemDef_t *item) {
 		x = item->window.rect.x;
 	}
 
-	if (editDef == NULL && item->cvar) {
+	if (!editDef || !item->cvar) {
 		return x;
 	}
 
@@ -1925,12 +1932,20 @@ qboolean Item_ListBox_HandleKey(itemDef_t *item, int key, qboolean down, qboolea
 
 qboolean Item_YesNo_HandleKey(itemDef_t *item, int key) {
 
-  if (Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory) && item->window.flags & WINDOW_HASFOCUS && item->cvar) {
-		if (key == K_MOUSE1 || key == K_ENTER || key == K_MOUSE2 || key == K_MOUSE3) {
-	    DC->setCVar(item->cvar, va("%i", !DC->getCVarValue(item->cvar)));
-		  return qtrue;
+	if (item->cvar) {
+		qboolean action = qfalse;
+		if (key == K_MOUSE1 || key == K_MOUSE2 || key == K_MOUSE3) {
+			if (Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory) && item->window.flags & WINDOW_HASFOCUS) {
+				action = qtrue;
+			}
+		} else if (UI_SelectForKey(key) != 0) {
+			action = qtrue;
 		}
-  }
+		if (action) {
+			DC->setCVar(item->cvar, va("%i", !DC->getCVarValue(item->cvar)));
+			return qtrue;
+		}
+	}
 
   return qfalse;
 
@@ -1999,11 +2014,21 @@ const char *Item_Multi_Setting(itemDef_t *item) {
 qboolean Item_Multi_HandleKey(itemDef_t *item, int key) {
 	multiDef_t *multiPtr = (multiDef_t*)item->typeData;
 	if (multiPtr) {
-	  if (Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory) && item->window.flags & WINDOW_HASFOCUS && item->cvar) {
-			if (key == K_MOUSE1 || key == K_ENTER || key == K_MOUSE2 || key == K_MOUSE3) {
-				int current = Item_Multi_FindCvarByValue(item) + 1;
+		if (item->cvar) {
+			int select = 0;
+			if (key == K_MOUSE1 || key == K_MOUSE2 || key == K_MOUSE3) {
+				if (Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory) && item->window.flags & WINDOW_HASFOCUS) {
+					select = (key == K_MOUSE2) ? -1 : 1;
+				}
+			} else {
+				select = UI_SelectForKey(key);
+			}
+			if (select != 0) {
+				int current = Item_Multi_FindCvarByValue(item) + select;
 				int max = Item_Multi_CountSettings(item);
-				if ( current < 0 || current >= max ) {
+				if ( current < 0 ) {
+					current = max-1;
+				} else if ( current >= max ) {
 					current = 0;
 				}
 				if (multiPtr->strDef) {
@@ -2327,10 +2352,10 @@ qboolean Item_Slider_HandleKey(itemDef_t *item, int key, qboolean down) {
 	float x, value, width, work;
 
 	//DC->Print("slider handle key\n");
-	if (item->window.flags & WINDOW_HASFOCUS && item->cvar && Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory)) {
-		if (key == K_MOUSE1 || key == K_ENTER || key == K_MOUSE2 || key == K_MOUSE3) {
+	if (item->cvar) {
+		if (key == K_MOUSE1 || key == K_MOUSE2 || key == K_MOUSE3) {
 			editFieldDef_t *editDef = item->typeData;
-			if (editDef) {
+			if (editDef && Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory) && item->window.flags & WINDOW_HASFOCUS) {
 				rectDef_t testRect;
 				width = SLIDER_WIDTH;
 				if (item->text) {
@@ -2353,6 +2378,23 @@ qboolean Item_Slider_HandleKey(itemDef_t *item, int key, qboolean down) {
 					// vm fuckage
 					// value = (((float)(DC->cursorx - x)/ SLIDER_WIDTH) * (editDef->maxVal - editDef->minVal));
 					value += editDef->minVal;
+					DC->setCVar(item->cvar, va("%f", value));
+					return qtrue;
+				}
+			}
+		} else {
+			int select = UI_SelectForKey(key);
+			if (select != 0) {
+				editFieldDef_t *editDef = item->typeData;
+				if (editDef) {
+					// 20 is number of steps
+					value = DC->getCVarValue(item->cvar) + (((editDef->maxVal - editDef->minVal)/20) * select);
+
+					if (value < editDef->minVal)
+						value = editDef->minVal;
+					else if (value > editDef->maxVal)
+						value = editDef->maxVal;
+
 					DC->setCVar(item->cvar, va("%f", value));
 					return qtrue;
 				}
@@ -2587,6 +2629,32 @@ static rectDef_t *Item_CorrectedTextRect(itemDef_t *item) {
 	return &rect;
 }
 
+// menu item key horizontal action: -1 = previous value, 1 = next value, 0 = no change
+int UI_SelectForKey(int key)
+{
+	switch (key) {
+		case K_MOUSE1:
+		case K_MOUSE3:
+		case K_ENTER:
+		case K_KP_ENTER:
+		case K_RIGHTARROW:
+		case K_KP_RIGHTARROW:
+		case K_JOY1:
+		case K_JOY2:
+		case K_JOY3:
+		case K_JOY4:
+			return 1; // next
+
+		case K_MOUSE2:
+		case K_LEFTARROW:
+		case K_KP_LEFTARROW:
+			return -1; // previous
+	}
+
+	// no change
+	return 0;
+}
+
 void Menu_HandleKey(menuDef_t *menu, int key, qboolean down) {
 	int i;
 	itemDef_t *item = NULL;
@@ -2716,7 +2784,6 @@ void Menu_HandleKey(menuDef_t *menu, int key, qboolean down) {
 		case K_AUX14:
 		case K_AUX15:
 		case K_AUX16:
-			break;
 		case K_KP_ENTER:
 		case K_ENTER:
 			if (item) {
@@ -3428,9 +3495,10 @@ qboolean Item_Bind_HandleKey(itemDef_t *item, int key, qboolean down) {
 	int			id;
 	int			i;
 
-	if (Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory) && !g_waitingForKey)
+	if (!g_waitingForKey)
 	{
-		if (down && (key == K_MOUSE1 || key == K_ENTER)) {
+		if (down && ((key == K_MOUSE1 && Rect_ContainsPoint(&item->window.rect, DC->cursorx, DC->cursory))
+				|| key == K_ENTER || key == K_KP_ENTER || key == K_JOY1 || key == K_JOY2 || key == K_JOY3 || key == K_JOY4)) {
 			g_waitingForKey = qtrue;
 			g_bindItem = item;
 		}
@@ -3438,7 +3506,7 @@ qboolean Item_Bind_HandleKey(itemDef_t *item, int key, qboolean down) {
 	}
 	else
 	{
-		if (!g_waitingForKey || g_bindItem == NULL) {
+		if (g_bindItem == NULL) {
 			return qtrue;
 		}
 
@@ -4128,6 +4196,10 @@ menuDef_t *Menus_ActivateByName(const char *p) {
 
 
 void Item_Init(itemDef_t *item) {
+	if (item == NULL) {
+		return;
+	}
+
 	memset(item, 0, sizeof(itemDef_t));
 	item->textscale = 0.55f;
 	Window_Init(&item->window);
@@ -4197,12 +4269,12 @@ void Menu_HandleMouseMove(menuDef_t *menu, float x, float y) {
 						}
 					}
 				}
-      } else if (menu->items[i]->window.flags & WINDOW_MOUSEOVER) {
-          Item_MouseLeave(menu->items[i]);
-          Item_SetMouseOver(menu->items[i], qfalse);
-      }
-    }
-  }
+			} else if (menu->items[i] && menu->items[i]->window.flags & WINDOW_MOUSEOVER) {
+				Item_MouseLeave(menu->items[i]);
+				Item_SetMouseOver(menu->items[i], qfalse);
+			}
+		}
+	}
 
 }
 
@@ -5512,6 +5584,9 @@ qboolean MenuParse_itemDef( itemDef_t *item, int handle ) {
 	menuDef_t *menu = (menuDef_t*)item;
 	if (menu->itemCount < MAX_MENUITEMS) {
 		menu->items[menu->itemCount] = UI_Alloc(sizeof(itemDef_t));
+		if (!menu->items[menu->itemCount]) {
+			return qfalse;
+		}
 		Item_Init(menu->items[menu->itemCount]);
 		if (!Item_Parse(handle, menu->items[menu->itemCount])) {
 			return qfalse;

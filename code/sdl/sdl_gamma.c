@@ -29,6 +29,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include "../renderercommon/tr_common.h"
 #include "../qcommon/qcommon.h"
 
+extern SDL_Window *SDL_window;
+
 #ifdef _WIN32
 // leilei - 3dfx gamma fix
 BOOL  ( WINAPI * qwglGetDeviceGammaRamp3DFX)( HDC, LPVOID );
@@ -90,6 +92,7 @@ void GLimp_SetGamma( unsigned char red[256], unsigned char green[256], unsigned 
 				table[j][i] = table[j][i-1];
 		}
 	}
+	
 
 	// leilei - 3dfx gamma support
 #ifdef _WIN32
@@ -103,7 +106,10 @@ void GLimp_SetGamma( unsigned char red[256], unsigned char green[256], unsigned 
 	else
 #endif
 	{
-	SDL_SetGammaRamp(table[0], table[1], table[2]);
+		if (SDL_SetWindowGammaRamp(SDL_window, table[0], table[1], table[2]) < 0)
+			{
+				ri.Printf( PRINT_DEVELOPER, "SDL_SetWindowGammaRamp() failed: %s\n", SDL_GetError() );
+			}
 	}
 }
 

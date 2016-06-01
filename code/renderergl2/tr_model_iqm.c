@@ -144,7 +144,7 @@ qboolean R_LoadIQM( model_t *mod, void *buffer, int filesize, const char *mod_na
 	unsigned short		*framedata;
 	char			*str;
 	int			i, j;
-	float			jointInvMats[IQM_MAX_JOINTS * 12];
+	float			jointInvMats[IQM_MAX_JOINTS * 12] = {0.0f};
 	float			*mat, *matInv;
 	size_t			size, joint_names;
 	iqmData_t		*iqmData;
@@ -1130,7 +1130,7 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 			normal[1] = DotProduct(&nrmMat[3], &data->normals[3*vtx]);
 			normal[2] = DotProduct(&nrmMat[6], &data->normals[3*vtx]);
 
-			*outNormal = R_VboPackNormal(normal);
+			R_VaoPackNormal((byte *)outNormal, normal);
 
 #ifdef USE_VERT_TANGENT_SPACE
 			tangent[0] = DotProduct(&nrmMat[0], &data->tangents[4*vtx]);
@@ -1138,7 +1138,7 @@ void RB_IQMSurfaceAnim( surfaceType_t *surface ) {
 			tangent[2] = DotProduct(&nrmMat[6], &data->tangents[4*vtx]);
 			tangent[3] = data->tangents[4*vtx+3];
 
-			*outTangent++ = R_VboPackTangent(tangent);
+			R_VaoPackTangent((byte *)outTangent++, tangent);
 #endif
 		}
 

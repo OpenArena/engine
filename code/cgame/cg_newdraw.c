@@ -295,8 +295,6 @@ static void CG_DrawPlayerHead(rectDef_t *rect, qboolean draw2D) {
 			cg.headEndYaw = 180 + 20 * cos( crandom()*M_PI );
 			cg.headEndPitch = 5 * cos( crandom()*M_PI );
 		}
-
-		size = rect->w * 1.25;
 	}
 
 	// if the server was frozen for a while we may have a bad head start time
@@ -510,8 +508,6 @@ static void CG_DrawSelectedPlayerPowerup( rectDef_t *rect, qboolean draw2D ) {
 				item = BG_FindItemForPowerup( j );
 				if (item) {
 				  CG_DrawPic( x, y, rect->w, rect->h, trap_R_RegisterShader( item->icon ) );
-					x += 3;
-					y += 3;
           return;
 				}
 			}
@@ -1218,7 +1214,7 @@ static void CG_Text_Paint_Limit(float *maxX, float x, float y, float scale, vec4
 		}
 		count = 0;
 		while (s && *s && count < len) {
-			glyph = &font->glyphs[(int)*s]; // TTimo: FIXME: getting nasty warnings without the cast, hopefully this doesn't break the VM build
+			glyph = &font->glyphs[*s & 255];
 			if ( Q_IsColorString( s ) ) {
 				memcpy( newColor, g_color_table[ColorIndex(*(s+1))], sizeof( newColor ) );
 				newColor[3] = color[3];
@@ -1227,7 +1223,7 @@ static void CG_Text_Paint_Limit(float *maxX, float x, float y, float scale, vec4
 				continue;
 			} else {
 	      float yadj = useScale * glyph->top;
-				if (CG_Text_Width(s, useScale, 1) + x > max) {
+				if (CG_Text_Width(s, scale, 1) + x > max) {
 					*maxX = 0;
 					break;
 				}

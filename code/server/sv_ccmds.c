@@ -850,7 +850,7 @@ static void SV_AddBanToList(qboolean isexception)
 		return;
 	}
 
-	if(serverBansCount > ARRAY_LEN(serverBans))
+	if(serverBansCount >= ARRAY_LEN(serverBans))
 	{
 		Com_Printf ("Error: Maximum number of bans/exceptions exceeded.\n");
 		return;
@@ -1146,6 +1146,25 @@ static void SV_ExceptDel_f(void)
 }
 
 /*
+** SV_Strlen -- skips color escape codes
+*/
+static int SV_Strlen( const char *str ) {
+	const char *s = str;
+	int count = 0;
+
+	while ( *s ) {
+		if ( Q_IsColorString( s ) ) {
+			s += 2;
+		} else {
+			count++;
+			s++;
+		}
+	}
+
+	return count;
+}
+
+/*
 ================
 SV_Status_f
 ================
@@ -1165,20 +1184,20 @@ static void SV_Status_f( void ) {
 
 	Com_Printf ("map: %s\n", sv_mapname->string );
 
-	Com_Printf ("num score ping name            lastmsg address               qport rate\n");
-	Com_Printf ("--- ----- ---- --------------- ------- --------------------- ----- -----\n");
+	Com_Printf ("cl score ping name            address                                 rate \n");
+	Com_Printf ("-- ----- ---- --------------- --------------------------------------- -----\n");
 	for (i=0,cl=svs.clients ; i < sv_maxclients->integer ; i++,cl++)
 	{
 		if (!cl->state)
 			continue;
-		Com_Printf ("%3i ", i);
+		Com_Printf ("%2i ", i);
 		ps = SV_GameClientNum( i );
 		Com_Printf ("%5i ", ps->persistant[PERS_SCORE]);
 
 		if (cl->state == CS_CONNECTED)
-			Com_Printf ("CNCT ");
+			Com_Printf ("CON ");
 		else if (cl->state == CS_ZOMBIE)
-			Com_Printf ("ZMBI ");
+			Com_Printf ("ZMB ");
 		else
 		{
 			ping = cl->ping < 9999 ? cl->ping : 9999;
@@ -1187,10 +1206,7 @@ static void SV_Status_f( void ) {
 
 		Com_Printf ("%s", cl->name);
 		
-		// TTimo adding a ^7 to reset the color
-		// NOTE: colored names in status breaks the padding (WONTFIX)
-		Com_Printf ("^7");
-		l = 14 - strlen(cl->name);
+		l = 16 - SV_Strlen(cl->name);
 		j = 0;
 		
 		do
@@ -1199,11 +1215,11 @@ static void SV_Status_f( void ) {
 			j++;
 		} while(j < l);
 
-		Com_Printf ("%7i ", svs.time - cl->lastPacketTime );
 
+		// TTimo adding a ^7 to reset the color
 		s = NET_AdrToString( cl->netchan.remoteAddress );
-		Com_Printf ("%s", s);
-		l = 22 - strlen(s);
+		Com_Printf ("^7%s", s);
+		l = 39 - strlen(s);
 		j = 0;
 		
 		do
@@ -1212,8 +1228,6 @@ static void SV_Status_f( void ) {
 			j++;
 		} while(j < l);
 		
-		Com_Printf ("%5i", cl->netchan.qport);
-
 		Com_Printf (" %5i", cl->rate);
 
 		Com_Printf ("\n");
@@ -1290,6 +1304,71 @@ static void SV_ConTell_f(void) {
 	strcat(text, p);
 
 	SV_SendServerCommand(cl, "chat \"%s\"", text);
+}
+
+
+/*
+==================
+SV_ConSayto_f
+==================
+*/
+static void SV_ConSayto_f(void) {
+	char		*p;
+	char		text[1024];
+	client_t	*cl;
+	char		*rawname;
+	char		name[MAX_NAME_LENGTH];
+	char		cleanName[MAX_NAME_LENGTH];
+	client_t	*saytocl;
+	int			i;
+
+	// make sure server is running
+	if ( !com_sv_running->integer ) {
+		Com_Printf( "Server is not running.\n" );
+		return;
+	}
+
+	if ( Cmd_Argc() < 3 ) {
+		Com_Printf ("Usage: sayto <player name> <text>\n");
+		return;
+	}
+
+	rawname = Cmd_Argv(1);
+	
+	//allowing special characters in the console 
+	//with hex strings for player names
+	Com_FieldStringToPlayerName( name, MAX_NAME_LENGTH, rawname );
+
+	saytocl = NULL;
+	for ( i=0, cl=svs.clients ; i < sv_maxclients->integer ; i++,cl++ ) {
+		if ( !cl->state ) {
+			continue;
+		}
+		Q_strncpyz( cleanName, cl->name, sizeof(cleanName) );
+		Q_CleanStr( cleanName );
+
+		if ( !Q_stricmp( cleanName, name ) ) {
+			saytocl = cl;
+			break;
+		}
+	}
+	if( !saytocl )
+	{
+		Com_Printf ("No such player name: %s.\n", name);
+		return;
+	}
+
+	strcpy (text, "console_sayto: ");
+	p = Cmd_ArgsFrom(2);
+
+	if ( *p == '"' ) {
+		p++;
+		p[strlen(p)-1] = 0;
+	}
+
+	strcat(text, p);
+
+	SV_SendServerCommand(saytocl, "chat \"%s\"", text);
 }
 
 
@@ -1399,6 +1478,43 @@ static void SV_CompleteMapName( char *args, int argNum ) {
 
 /*
 ==================
+SV_CompletePlayerName
+==================
+*/
+static void SV_CompletePlayerName( char *args, int argNum ) {
+	if( argNum == 2 ) {
+		char		names[MAX_CLIENTS][MAX_NAME_LENGTH];
+		const char	*namesPtr[MAX_CLIENTS];
+		client_t	*cl;
+		int			i;
+		int			nameCount;
+		int			clientCount;
+
+		nameCount = 0;
+		clientCount = sv_maxclients->integer;
+
+		for ( i=0, cl=svs.clients ; i < clientCount; i++,cl++ ) {
+			if ( !cl->state ) {
+				continue;
+			}
+			if( i >= MAX_CLIENTS ) {
+				break;
+			}
+			Q_strncpyz( names[nameCount], cl->name, sizeof(names[nameCount]) );
+			Q_CleanStr( names[nameCount] );
+
+			namesPtr[nameCount] = names[nameCount];
+
+			nameCount++;
+		}
+		qsort( (void*)namesPtr, nameCount, sizeof( namesPtr[0] ), Com_strCompare );
+
+		Field_CompletePlayerName( namesPtr, nameCount );
+	}
+}
+
+/*
+==================
 SV_AddOperatorCommands
 ==================
 */
@@ -1443,6 +1559,8 @@ void SV_AddOperatorCommands( void ) {
 	if( com_dedicated->integer ) {
 		Cmd_AddCommand ("say", SV_ConSay_f);
 		Cmd_AddCommand ("tell", SV_ConTell_f);
+		Cmd_AddCommand ("sayto", SV_ConSayto_f);
+		Cmd_SetCommandCompletionFunc( "sayto", SV_CompletePlayerName );
 	}
 	
 	Cmd_AddCommand("rehashbans", SV_RehashBans_f);

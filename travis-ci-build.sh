@@ -30,7 +30,7 @@ fi
 if [ $failed -eq 1 ]; then
 	echo "Build failure.";
 else
-	echo "All builds successful.";
+	echo "Build successful.";
 fi
 
 exit $failed;

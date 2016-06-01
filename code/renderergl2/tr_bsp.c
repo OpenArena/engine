@@ -23,6 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #include "tr_local.h"
 
+#define JSON_IMPLEMENTATION
+#include "../qcommon/json.h"
+#undef JSON_IMPLEMENTATION
+
 /*
 
 Loads and prepares a map file for scene rendering.
@@ -101,7 +105,11 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	int		shift, r, g, b;
 
 	// shift the color data based on overbright range
+#if defined(USE_OVERBRIGHT)
 	shift = r_mapOverBrightBits->integer - tr.overbrightBits;
+#else
+	shift = 0;
+#endif
 
 	// shift the data based on overbright range
 	r = in[0] << shift;
@@ -136,14 +144,16 @@ static void R_ColorShiftLightingFloats(float in[4], float out[4], float scale )
 {
 	float	r, g, b;
 
-	scale *= pow(2.0f, r_mapOverBrightBits->integer - tr.overbrightBits);
+#if defined(USE_OVERBRIGHT)
+	scale *= 1 << (r_mapOverBrightBits->integer - tr.overbrightBits);
+#endif
 
 	r = in[0] * scale;
 	g = in[1] * scale;
 	b = in[2] * scale;
 
 	// normalize by color instead of saturating to white
-	if ( !r_hdr->integer && ( r > 1 || g > 1 || b > 1 ) ) {
+	if ( r > 1 || g > 1 || b > 1 ) {
 		float	max;
 
 		max = r > g ? r : g;
@@ -164,6 +174,8 @@ void ColorToRGBM(const vec3_t color, unsigned char rgbm[4])
 {
 	vec3_t          sample;
 	float			maxComponent;
+
+	VectorCopy(color, sample);
 
 	maxComponent = MAX(sample[0], sample[1]);
 	maxComponent = MAX(maxComponent, sample[2]);
@@ -284,13 +296,10 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 		tr.deluxemaps = ri.Hunk_Alloc( tr.numLightmaps * sizeof(image_t *), h_low );
 	}
 
-	if (r_hdr->integer)
-	{
-		if (glRefConfig.textureFloat && glRefConfig.halfFloatPixel && r_floatLightmap->integer)
-			textureInternalFormat = GL_RGBA16F_ARB;
-		else
-			textureInternalFormat = GL_RGBA8;
-	}
+	if (glRefConfig.floatLightmap)
+		textureInternalFormat = GL_RGBA16F_ARB;
+	else
+		textureInternalFormat = GL_RGBA8;
 
 	if (r_mergeLightmaps->integer)
 	{
@@ -384,7 +393,7 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 			{
 				if (hdrLightmap)
 				{
-					float color[3];
+					vec4_t color;
 
 #if 0 // HDRFILE_RGBE
 					float exponent = exp2(buf_p[j*4+3] - 128);
@@ -399,16 +408,18 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 					color[1] = LittleFloat(color[1]);
 					color[2] = LittleFloat(color[2]);
 #endif
+					color[3] = 1.0f;
+
 					R_ColorShiftLightingFloats(color, color, 1.0f/255.0f);
 
-					if (glRefConfig.textureFloat && glRefConfig.halfFloatPixel && r_floatLightmap->integer)
+					if (glRefConfig.floatLightmap)
 						ColorToRGBA16F(color, (unsigned short *)(&image[j*8]));
 					else
 						ColorToRGBM(color, &image[j*4]);
 				}
-				else if (glRefConfig.textureFloat && glRefConfig.halfFloatPixel && r_floatLightmap->integer) 
+				else if (glRefConfig.floatLightmap)
 				{
-					float color[3];
+					vec4_t color;
 
 					//hack: convert LDR lightmap to HDR one
 					color[0] = MAX(buf_p[j*3+0], 0.499f);
@@ -424,6 +435,7 @@ static	void R_LoadLightmaps( lump_t *l, lump_t *surfs ) {
 						color[1] = avg;
 						color[2] = avg;
 					}
+					color[3] = 1.0f;
 
 					R_ColorShiftLightingFloats(color, color, 1.0f/255.0f);
 
@@ -597,11 +609,7 @@ static	void R_LoadVisibility( lump_t *l ) {
 	int		len;
 	byte	*buf;
 
-	len = ( s_worldData.numClusters + 63 ) & ~63;
-	s_worldData.novis = ri.Hunk_Alloc( len, h_low );
-	Com_Memset( s_worldData.novis, 0xff, len );
-
-    len = l->filelen;
+	len = l->filelen;
 	if ( !len ) {
 		return;
 	}
@@ -1473,7 +1481,7 @@ int R_StitchPatches( int grid1num, int grid2num ) {
 
 			for (m = 0; m < 2; m++) {
 
-				if ( grid2->width >= MAX_GRID_SIZE )
+				if ( !grid2 || grid2->width >= MAX_GRID_SIZE )
 					break;
 				if (m) offset2 = (grid2->height-1) * grid2->width;
 				else offset2 = 0;
@@ -1517,7 +1525,7 @@ int R_StitchPatches( int grid1num, int grid2num ) {
 			}
 			for (m = 0; m < 2; m++) {
 
-				if (grid2->height >= MAX_GRID_SIZE)
+				if (!grid2 || grid2->height >= MAX_GRID_SIZE)
 					break;
 				if (m) offset2 = grid2->width-1;
 				else offset2 = 0;
@@ -1572,7 +1580,7 @@ int R_StitchPatches( int grid1num, int grid2num ) {
 		for (k = grid1->height-1; k > 1; k -= 2) {
 			for (m = 0; m < 2; m++) {
 
-				if ( grid2->width >= MAX_GRID_SIZE )
+				if (!grid2 || grid2->width >= MAX_GRID_SIZE )
 					break;
 				if (m) offset2 = (grid2->height-1) * grid2->width;
 				else offset2 = 0;
@@ -1616,7 +1624,7 @@ int R_StitchPatches( int grid1num, int grid2num ) {
 			}
 			for (m = 0; m < 2; m++) {
 
-				if (grid2->height >= MAX_GRID_SIZE)
+				if (!grid2 || grid2->height >= MAX_GRID_SIZE)
 					break;
 				if (m) offset2 = grid2->width-1;
 				else offset2 = 0;
@@ -1810,6 +1818,19 @@ static int BSPSurfaceCompare(const void *a, const void *b)
 	else if(aa->cubemapIndex > bb->cubemapIndex)
 		return 1;
 
+	// by leaf
+	if (s_worldData.surfacesViewCount[aa - s_worldData.surfaces] < s_worldData.surfacesViewCount[bb - s_worldData.surfaces])
+		return -1;
+
+	else if (s_worldData.surfacesViewCount[aa - s_worldData.surfaces] > s_worldData.surfacesViewCount[bb - s_worldData.surfaces])
+		return 1;
+
+	// by surface number
+	if (aa < bb)
+		return -1;
+
+	else if (aa > bb)
+		return 1;
 
 	return 0;
 }
@@ -1817,40 +1838,26 @@ static int BSPSurfaceCompare(const void *a, const void *b)
 
 static void CopyVert(const srfVert_t * in, srfVert_t * out)
 {
-	int             j;
-
-	for(j = 0; j < 3; j++)
-	{
-		out->xyz[j]       = in->xyz[j];
+	VectorCopy(in->xyz,      out->xyz);
 #ifdef USE_VERT_TANGENT_SPACE
-		out->tangent[j]   = in->tangent[j];
-		//out->bitangent[j] = in->bitangent[j];
+	VectorCopy4(in->tangent, out->tangent);
 #endif
-		out->normal[j]    = in->normal[j];
-		out->lightdir[j]  = in->lightdir[j];
-	}
+	VectorCopy(in->normal,   out->normal);
+	VectorCopy(in->lightdir, out->lightdir);
 
-	out->tangent[3] = in->tangent[3];
+	VectorCopy2(in->st,       out->st);
+	VectorCopy2(in->lightmap, out->lightmap);
 
-	for(j = 0; j < 2; j++)
-	{
-		out->st[j] = in->st[j];
-		out->lightmap[j] = in->lightmap[j];
-	}
-
-	for(j = 0; j < 4; j++)
-	{
-		out->vertexColors[j] = in->vertexColors[j];
-	}
+	VectorCopy4(in->vertexColors, out->vertexColors);
 }
 
 
 /*
 ===============
-R_CreateWorldVBOs
+R_CreateWorldVaos
 ===============
 */
-static void R_CreateWorldVBOs(void)
+static void R_CreateWorldVaos(void)
 {
 	int             i, j, k;
 
@@ -1864,30 +1871,77 @@ static void R_CreateWorldVBOs(void)
 	msurface_t   *surface, **firstSurf, **lastSurf, **currSurf;
 	msurface_t  **surfacesSorted;
 
-	VBO_t *vbo;
-	IBO_t *ibo;
+	vao_t *vao;
 
 	int maxVboSize = 4 * 1024 * 1024;
-	int maxIboSize = 4 * 1024 * 1024;
 
 	int             startTime, endTime;
 
 	startTime = ri.Milliseconds();
 
+	// mark surfaces with best matching leaf, using overlapping bounds
+	// using surfaceViewCount[] as leaf number, and surfacesDlightBits[] as coverage * 256
+	for (i = 0; i < s_worldData.numWorldSurfaces; i++)
+	{
+		s_worldData.surfacesViewCount[i] = -1;
+	}
+
+	for (i = 0; i < s_worldData.numWorldSurfaces; i++)
+	{
+		s_worldData.surfacesDlightBits[i] = 0;
+	}
+
+	for (i = s_worldData.numDecisionNodes; i < s_worldData.numnodes; i++)
+	{
+		mnode_t *leaf = s_worldData.nodes + i;
+
+		for (j = leaf->firstmarksurface; j < leaf->firstmarksurface + leaf->nummarksurfaces; j++)
+		{
+			int surfaceNum = s_worldData.marksurfaces[j];
+			msurface_t *surface = s_worldData.surfaces + surfaceNum;
+			float coverage = 1.0f;
+			int iCoverage;
+
+			for (k = 0; k < 3; k++)
+			{
+				float left, right;
+
+				if (leaf->mins[k] > surface->cullinfo.bounds[1][k] || surface->cullinfo.bounds[0][k] > leaf->maxs[k])
+				{
+					coverage = 0.0f;
+					break;
+				}
+
+				left  = MAX(leaf->mins[k], surface->cullinfo.bounds[0][k]);
+				right = MIN(leaf->maxs[k], surface->cullinfo.bounds[1][k]);
+
+				// nudge a bit in case this is an axis aligned wall
+				coverage *= right - left + 1.0f/256.0f;
+			}
+
+			iCoverage = coverage * 256;
+
+			if (iCoverage > s_worldData.surfacesDlightBits[surfaceNum])
+			{
+				s_worldData.surfacesDlightBits[surfaceNum] = iCoverage;
+				s_worldData.surfacesViewCount[surfaceNum] = i - s_worldData.numDecisionNodes;
+			}
+		}
+	}
+
+	for (i = 0; i < s_worldData.numWorldSurfaces; i++)
+	{
+		s_worldData.surfacesDlightBits[i] = 0;
+	}
+
 	// count surfaces
 	numSortedSurfaces = 0;
-	for(surface = &s_worldData.surfaces[0]; surface < &s_worldData.surfaces[s_worldData.numsurfaces]; surface++)
+	for(surface = s_worldData.surfaces; surface < s_worldData.surfaces + s_worldData.numWorldSurfaces; surface++)
 	{
 		srfBspSurface_t *bspSurf;
 		shader_t *shader = surface->shader;
 
-		if (shader->isPortal)
-			continue;
-
-		if (shader->isSky)
-			continue;
-
-		if (ShaderRequiresCPUDeforms(shader))
+		if (shader->isPortal || shader->isSky || ShaderRequiresCPUDeforms(shader))
 			continue;
 
 		// check for this now so we can use srfBspSurface_t* universally in the rest of the function
@@ -1906,18 +1960,12 @@ static void R_CreateWorldVBOs(void)
 	surfacesSorted = ri.Malloc(numSortedSurfaces * sizeof(*surfacesSorted));
 
 	j = 0;
-	for(surface = &s_worldData.surfaces[0]; surface < &s_worldData.surfaces[s_worldData.numsurfaces]; surface++)
+	for(surface = s_worldData.surfaces; surface < s_worldData.surfaces + s_worldData.numWorldSurfaces; surface++)
 	{
 		srfBspSurface_t *bspSurf;
 		shader_t *shader = surface->shader;
 
-		if (shader->isPortal)
-			continue;
-
-		if (shader->isSky)
-			continue;
-
-		if (ShaderRequiresCPUDeforms(shader))
+		if (shader->isPortal || shader->isSky || ShaderRequiresCPUDeforms(shader))
 			continue;
 
 		// check for this now so we can use srfBspSurface_t* universally in the rest of the function
@@ -1935,37 +1983,34 @@ static void R_CreateWorldVBOs(void)
 	qsort(surfacesSorted, numSortedSurfaces, sizeof(*surfacesSorted), BSPSurfaceCompare);
 
 	k = 0;
-	for(firstSurf = lastSurf = surfacesSorted; firstSurf < &surfacesSorted[numSortedSurfaces]; firstSurf = lastSurf)
+	for(firstSurf = lastSurf = surfacesSorted; firstSurf < surfacesSorted + numSortedSurfaces; firstSurf = lastSurf)
 	{
-		int currVboSize, currIboSize;
+		int currVboSize;
 
-		// Find range of surfaces to merge by:
-		// - Collecting a number of surfaces which fit under maxVboSize/maxIboSize, or
-		// - All the surfaces with a single shader which go over maxVboSize/maxIboSize
-		currVboSize = currIboSize = 0;
-		while (currVboSize < maxVboSize && currIboSize < maxIboSize && lastSurf < &surfacesSorted[numSortedSurfaces])
+		// Find range of surfaces to place in a VAO by:
+		// - Collecting a number of surfaces which fit under maxVboSize, or
+		// - All the surfaces with a single shader which go over maxVboSize
+		currVboSize = 0;
+		while (currVboSize < maxVboSize && lastSurf < surfacesSorted + numSortedSurfaces)
 		{
-			int addVboSize, addIboSize, currShaderIndex;
+			int addVboSize, currShaderIndex;
 
-			addVboSize = addIboSize = 0;
+			addVboSize = 0;
 			currShaderIndex = (*lastSurf)->shader->sortedIndex;
 
-			for(currSurf = lastSurf; currSurf < &surfacesSorted[numSortedSurfaces] && (*currSurf)->shader->sortedIndex == currShaderIndex; currSurf++)
+			for(currSurf = lastSurf; currSurf < surfacesSorted + numSortedSurfaces && (*currSurf)->shader->sortedIndex == currShaderIndex; currSurf++)
 			{
 				srfBspSurface_t *bspSurf = (srfBspSurface_t *) (*currSurf)->data;
 
 				addVboSize += bspSurf->numVerts * sizeof(srfVert_t);
-				addIboSize += bspSurf->numIndexes * sizeof(glIndex_t);
 			}
 
-			if ((currVboSize != 0 && addVboSize + currVboSize > maxVboSize)
-			 || (currIboSize != 0 && addIboSize + currIboSize > maxIboSize))
+			if (currVboSize != 0 && addVboSize + currVboSize > maxVboSize)
 				break;
 
 			lastSurf = currSurf;
 
 			currVboSize += addVboSize;
-			currIboSize += addIboSize;
 		}
 
 		// count verts/indexes/surfaces
@@ -1981,7 +2026,7 @@ static void R_CreateWorldVBOs(void)
 			numSurfaces++;
 		}
 
-		ri.Printf(PRINT_ALL, "...calculating world VBO %d ( %i verts %i tris )\n", k, numVerts, numIndexes / 3);
+		ri.Printf(PRINT_ALL, "...calculating world VAO %d ( %i verts %i tris )\n", k, numVerts, numIndexes / 3);
 
 		// create arrays
 		verts = ri.Hunk_AllocateTempMemory(numVerts * sizeof(srfVert_t));
@@ -2014,25 +2059,14 @@ static void R_CreateWorldVBOs(void)
 			}
 		}
 
-#ifdef USE_VERT_TANGENT_SPACE
-		vbo = R_CreateVBO2(va("staticBspModel0_VBO %i", k), numVerts, verts,
-									   ATTR_POSITION | ATTR_TEXCOORD | ATTR_LIGHTCOORD | ATTR_TANGENT |
-									   ATTR_NORMAL | ATTR_COLOR | ATTR_LIGHTDIRECTION, VBO_USAGE_STATIC);
-#else
-		vbo = R_CreateVBO2(va("staticBspModel0_VBO %i", k), numVerts, verts,
-									   ATTR_POSITION | ATTR_TEXCOORD | ATTR_LIGHTCOORD |
-									   ATTR_NORMAL | ATTR_COLOR | ATTR_LIGHTDIRECTION, VBO_USAGE_STATIC);
-#endif
+		vao = R_CreateVao2(va("staticBspModel%i_VAO", k), numVerts, verts, numIndexes, indexes);
 
-		ibo = R_CreateIBO2(va("staticBspModel0_IBO %i", k), numIndexes, indexes, VBO_USAGE_STATIC);
-
-		// point bsp surfaces to VBO
+		// point bsp surfaces to VAO
 		for (currSurf = firstSurf; currSurf < lastSurf; currSurf++)
 		{
 			srfBspSurface_t *bspSurf = (srfBspSurface_t *) (*currSurf)->data;
 
-			bspSurf->vbo = vbo;
-			bspSurf->ibo = ibo;
+			bspSurf->vao = vao;
 		}
 
 		ri.Hunk_FreeTempMemory(indexes);
@@ -2041,10 +2075,137 @@ static void R_CreateWorldVBOs(void)
 		k++;
 	}
 
+	if (r_mergeLeafSurfaces->integer)
+	{
+		msurface_t *mergedSurf;
+
+		// count merged surfaces
+		int numMergedSurfaces = 0, numUnmergedSurfaces = 0;
+		for(firstSurf = lastSurf = surfacesSorted; firstSurf < surfacesSorted + numSortedSurfaces; firstSurf = lastSurf)
+		{
+			for (lastSurf++ ; lastSurf < surfacesSorted + numSortedSurfaces; lastSurf++)
+			{
+				int lastSurfLeafIndex, firstSurfLeafIndex;
+
+				if ((*lastSurf)->shader         != (*firstSurf)->shader
+				 || (*lastSurf)->fogIndex       != (*firstSurf)->fogIndex
+				 || (*lastSurf)->cubemapIndex   != (*firstSurf)->cubemapIndex)
+					break;
+
+				lastSurfLeafIndex  = s_worldData.surfacesViewCount[*lastSurf  - s_worldData.surfaces];
+				firstSurfLeafIndex = s_worldData.surfacesViewCount[*firstSurf - s_worldData.surfaces];
+
+				if (lastSurfLeafIndex != firstSurfLeafIndex)
+					break;
+			}
+
+			// don't merge single surfaces
+			if (firstSurf + 1 == lastSurf)
+			{
+				numUnmergedSurfaces++;
+				continue;
+			}
+
+			numMergedSurfaces++;
+		}
+
+		// Allocate merged surfaces
+		s_worldData.mergedSurfaces = ri.Hunk_Alloc(sizeof(*s_worldData.mergedSurfaces) * numMergedSurfaces, h_low);
+		s_worldData.mergedSurfacesViewCount = ri.Hunk_Alloc(sizeof(*s_worldData.mergedSurfacesViewCount) * numMergedSurfaces, h_low);
+		s_worldData.mergedSurfacesDlightBits = ri.Hunk_Alloc(sizeof(*s_worldData.mergedSurfacesDlightBits) * numMergedSurfaces, h_low);
+		s_worldData.mergedSurfacesPshadowBits = ri.Hunk_Alloc(sizeof(*s_worldData.mergedSurfacesPshadowBits) * numMergedSurfaces, h_low);
+		s_worldData.numMergedSurfaces = numMergedSurfaces;
+		
+		// view surfaces are like mark surfaces, except negative ones represent merged surfaces
+		// -1 represents 0, -2 represents 1, and so on
+		s_worldData.viewSurfaces = ri.Hunk_Alloc(sizeof(*s_worldData.viewSurfaces) * s_worldData.nummarksurfaces, h_low);
+
+		// actually merge surfaces
+		mergedSurf = s_worldData.mergedSurfaces;
+		for(firstSurf = lastSurf = surfacesSorted; firstSurf < surfacesSorted + numSortedSurfaces; firstSurf = lastSurf)
+		{
+			srfBspSurface_t *bspSurf, *vaoSurf;
+
+			for ( lastSurf++ ; lastSurf < surfacesSorted + numSortedSurfaces; lastSurf++)
+			{
+				int lastSurfLeafIndex, firstSurfLeafIndex;
+
+				if ((*lastSurf)->shader         != (*firstSurf)->shader
+				 || (*lastSurf)->fogIndex       != (*firstSurf)->fogIndex
+				 || (*lastSurf)->cubemapIndex   != (*firstSurf)->cubemapIndex)
+					break;
+
+				lastSurfLeafIndex  = s_worldData.surfacesViewCount[*lastSurf  - s_worldData.surfaces];
+				firstSurfLeafIndex = s_worldData.surfacesViewCount[*firstSurf - s_worldData.surfaces];
+
+				if (lastSurfLeafIndex != firstSurfLeafIndex)
+					break;
+			}
+
+			// don't merge single surfaces
+			if (firstSurf + 1 == lastSurf)
+				continue;
+
+			bspSurf = (srfBspSurface_t *)(*firstSurf)->data;
+
+			vaoSurf = ri.Hunk_Alloc(sizeof(*vaoSurf), h_low);
+			memset(vaoSurf, 0, sizeof(*vaoSurf));
+			vaoSurf->surfaceType = SF_VAO_MESH;
+
+			vaoSurf->vao = bspSurf->vao;
+
+			vaoSurf->firstIndex = bspSurf->firstIndex;
+			vaoSurf->minIndex = bspSurf->minIndex;
+			vaoSurf->maxIndex = bspSurf->maxIndex;
+
+			ClearBounds(vaoSurf->cullBounds[0], vaoSurf->cullBounds[1]);
+			for (currSurf = firstSurf; currSurf < lastSurf; currSurf++)
+			{
+				srfBspSurface_t *currBspSurf = (srfBspSurface_t *)(*currSurf)->data;
+
+				vaoSurf->numVerts   += currBspSurf->numVerts;
+				vaoSurf->numIndexes += currBspSurf->numIndexes;
+				vaoSurf->minIndex = MIN(vaoSurf->minIndex, currBspSurf->minIndex);
+				vaoSurf->maxIndex = MAX(vaoSurf->maxIndex, currBspSurf->maxIndex);
+				AddPointToBounds((*currSurf)->cullinfo.bounds[0], vaoSurf->cullBounds[0], vaoSurf->cullBounds[1]);
+				AddPointToBounds((*currSurf)->cullinfo.bounds[1], vaoSurf->cullBounds[0], vaoSurf->cullBounds[1]);
+			}
+
+			VectorCopy(vaoSurf->cullBounds[0], mergedSurf->cullinfo.bounds[0]);
+			VectorCopy(vaoSurf->cullBounds[1], mergedSurf->cullinfo.bounds[1]);
+
+			mergedSurf->cullinfo.type =  CULLINFO_BOX;
+			mergedSurf->data          =  (surfaceType_t *)vaoSurf;
+			mergedSurf->fogIndex      =  (*firstSurf)->fogIndex;
+			mergedSurf->cubemapIndex  =  (*firstSurf)->cubemapIndex;
+			mergedSurf->shader        =  (*firstSurf)->shader;
+
+			// change surfacesViewCount[] from leaf index to viewSurface index - 1 so we can redirect later
+			// subtracting 2 (viewSurface index - 1) to avoid collision with -1 (no leaf)
+			for (currSurf = firstSurf; currSurf < lastSurf; currSurf++)
+				s_worldData.surfacesViewCount[*currSurf - s_worldData.surfaces] = -((int)(mergedSurf - s_worldData.mergedSurfaces)) - 2;
+
+			mergedSurf++;
+		}
+
+		// direct viewSurfaces to merged and unmerged surfaces
+		for (i = 0; i < s_worldData.nummarksurfaces; i++)
+		{
+			int viewSurfaceIndex = s_worldData.surfacesViewCount[s_worldData.marksurfaces[i]] + 1;
+			s_worldData.viewSurfaces[i] = (viewSurfaceIndex < 0) ? viewSurfaceIndex : s_worldData.marksurfaces[i];
+		}
+
+		ri.Printf(PRINT_ALL, "Processed %d mergeable surfaces into %d merged, %d unmerged\n",
+			numSortedSurfaces, numMergedSurfaces, numUnmergedSurfaces);
+	}
+
+	for (i = 0; i < s_worldData.numWorldSurfaces; i++)
+		s_worldData.surfacesViewCount[i] = -1;
+
 	ri.Free(surfacesSorted);
 
 	endTime = ri.Milliseconds();
-	ri.Printf(PRINT_ALL, "world VBOs calculation time = %5.2f seconds\n", (endTime - startTime) / 1000.0);
+	ri.Printf(PRINT_ALL, "world VAOs calculation time = %5.2f seconds\n", (endTime - startTime) / 1000.0);
 }
 
 /*
@@ -2108,7 +2269,7 @@ static	void R_LoadSurfaces( lump_t *surfs, lump_t *verts, lump_t *indexLump ) {
 
 
 	// Two passes, allocate surfaces first, then load them full of data
-	// This ensures surfaces are close together to reduce L2 cache misses when using VBOs,
+	// This ensures surfaces are close together to reduce L2 cache misses when using VAOs,
 	// which don't actually use the verts and indexes
 	in = (void *)(fileBase + surfs->fileofs);
 	out = s_worldData.surfaces;
@@ -2231,7 +2392,7 @@ static	void R_LoadSubmodels( lump_t *l ) {
 
 		if(i == 0)
 		{
-			// Add this for limiting VBO surface creation
+			// Add this for limiting VAO surface creation
 			s_worldData.numWorldSurfaces = out->numSurfaces;
 		}
 	}
@@ -2597,7 +2758,11 @@ void R_LoadLightGrid( lump_t *l ) {
 
 		if (hdrLightGrid)
 		{
-			float lightScale = pow(2, r_mapOverBrightBits->integer - tr.overbrightBits);
+#if defined(USE_OVERBRIGHT)
+			float lightScale = 1 << (r_mapOverBrightBits->integer - tr.overbrightBits);
+#else
+			float lightScale = 1.0f;
+#endif
 
 			//ri.Printf(PRINT_ALL, "found!\n");
 
@@ -2720,7 +2885,7 @@ qboolean R_GetEntityToken( char *buffer, int size ) {
 
 	s = COM_Parse( &s_worldData.entityParsePoint );
 	Q_strncpyz( buffer, s, size );
-	if ( !s_worldData.entityParsePoint || !s[0] ) {
+	if ( !s_worldData.entityParsePoint && !s[0] ) {
 		s_worldData.entityParsePoint = s_worldData.entityString;
 		return qfalse;
 	} else {
@@ -2747,7 +2912,8 @@ qboolean R_ParseSpawnVars( char *spawnVarChars, int maxSpawnVarChars, int *numSp
 		return qfalse;
 	}
 	if ( com_token[0] != '{' ) {
-		ri.Printf( PRINT_ALL, "R_ParseSpawnVars: found %s when expecting {",com_token );
+		ri.Printf( PRINT_ALL, "R_ParseSpawnVars: found %s when expecting {\n",com_token );
+		return qfalse;
 	}
 
 	// go through all the key / value pairs
@@ -2756,7 +2922,8 @@ qboolean R_ParseSpawnVars( char *spawnVarChars, int maxSpawnVarChars, int *numSp
 
 		// parse key
 		if ( !R_GetEntityToken( keyname, sizeof( keyname ) ) ) {
-			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: EOF without closing brace" );
+			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: EOF without closing brace\n" );
+			return qfalse;
 		}
 
 		if ( keyname[0] == '}' ) {
@@ -2765,18 +2932,18 @@ qboolean R_ParseSpawnVars( char *spawnVarChars, int maxSpawnVarChars, int *numSp
 		
 		// parse value	
 		if ( !R_GetEntityToken( com_token, sizeof( com_token ) ) ) {
-			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: EOF without closing brace" );
-			break;
+			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: EOF without closing brace\n" );
+			return qfalse;
 		}
 
 		if ( com_token[0] == '}' ) {
-			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: closing brace without data" );
-			break;
+			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: closing brace without data\n" );
+			return qfalse;
 		}
 
 		if ( *numSpawnVars == MAX_SPAWN_VARS ) {
-			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: MAX_SPAWN_VARS" );
-			break;
+			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: MAX_SPAWN_VARS\n" );
+			return qfalse;
 		}
 
 		keyLength = strlen(keyname) + 1;
@@ -2784,8 +2951,8 @@ qboolean R_ParseSpawnVars( char *spawnVarChars, int maxSpawnVarChars, int *numSp
 
 		if (numSpawnVarChars + keyLength + tokenLength > maxSpawnVarChars)
 		{
-			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: MAX_SPAWN_VAR_CHARS" );
-			break;
+			ri.Printf( PRINT_ALL, "R_ParseSpawnVars: MAX_SPAWN_VAR_CHARS\n" );
+			return qfalse;
 		}
 
 		strcpy(spawnVarChars + numSpawnVarChars, keyname);
@@ -2800,6 +2967,78 @@ qboolean R_ParseSpawnVars( char *spawnVarChars, int maxSpawnVarChars, int *numSp
 	}
 
 	return qtrue;
+}
+
+void R_LoadEnvironmentJson(const char *baseName)
+{
+	char filename[MAX_QPATH];
+
+	union {
+		char *c;
+		void *v;
+	} buffer;
+	char *bufferEnd;
+
+	const char *cubemapArrayJson;
+	int filelen, i;
+
+	Com_sprintf(filename, MAX_QPATH, "cubemaps/%s/env.json", baseName);
+
+	filelen = ri.FS_ReadFile(filename, &buffer.v);
+	if (!buffer.c)
+		return;
+	bufferEnd = buffer.c + filelen;
+
+	if (JSON_ValueGetType(buffer.c, bufferEnd) != JSONTYPE_OBJECT)
+	{
+		ri.Printf(PRINT_ALL, "Bad %s: does not start with a object\n", filename);
+		ri.FS_FreeFile(buffer.v);
+		return;
+	}
+
+	cubemapArrayJson = JSON_ObjectGetNamedValue(buffer.c, bufferEnd, "Cubemaps");
+	if (!cubemapArrayJson)
+	{
+		ri.Printf(PRINT_ALL, "Bad %s: no Cubemaps\n", filename);
+		ri.FS_FreeFile(buffer.v);
+		return;
+	}
+
+	if (JSON_ValueGetType(cubemapArrayJson, bufferEnd) != JSONTYPE_ARRAY)
+	{
+		ri.Printf(PRINT_ALL, "Bad %s: Cubemaps not an array\n", filename);
+		ri.FS_FreeFile(buffer.v);
+		return;
+	}
+
+	tr.numCubemaps = JSON_ArrayGetIndex(cubemapArrayJson, bufferEnd, NULL, 0);
+	tr.cubemaps = ri.Hunk_Alloc(tr.numCubemaps * sizeof(*tr.cubemaps), h_low);
+	memset(tr.cubemaps, 0, tr.numCubemaps * sizeof(*tr.cubemaps));
+
+	for (i = 0; i < tr.numCubemaps; i++)
+	{
+		cubemap_t *cubemap = &tr.cubemaps[i];
+		const char *cubemapJson, *keyValueJson, *indexes[3];
+		int j;
+
+		cubemapJson = JSON_ArrayGetValue(cubemapArrayJson, bufferEnd, i);
+
+		keyValueJson = JSON_ObjectGetNamedValue(cubemapJson, bufferEnd, "Name");
+		if (!JSON_ValueGetString(keyValueJson, bufferEnd, cubemap->name, MAX_QPATH))
+			cubemap->name[0] = '\0';
+
+		keyValueJson = JSON_ObjectGetNamedValue(cubemapJson, bufferEnd, "Position");
+		JSON_ArrayGetIndex(keyValueJson, bufferEnd, indexes, 3);
+		for (j = 0; j < 3; j++)
+			cubemap->origin[j] = JSON_ValueGetFloat(indexes[j], bufferEnd);
+
+		cubemap->parallaxRadius = 1000.0f;
+		keyValueJson = JSON_ObjectGetNamedValue(cubemapJson, bufferEnd, "Radius");
+		if (keyValueJson)
+			cubemap->parallaxRadius = JSON_ValueGetFloat(keyValueJson, bufferEnd);
+	}
+
+	ri.FS_FreeFile(buffer.v);
 }
 
 void R_LoadCubemapEntities(char *cubemapEntityName)
@@ -2826,33 +3065,45 @@ void R_LoadCubemapEntities(char *cubemapEntityName)
 		return;
 
 	tr.numCubemaps = numCubemaps;
-	tr.cubemapOrigins = ri.Hunk_Alloc( tr.numCubemaps * sizeof(*tr.cubemapOrigins), h_low);
-	tr.cubemaps = ri.Hunk_Alloc( tr.numCubemaps * sizeof(*tr.cubemaps), h_low);
+	tr.cubemaps = ri.Hunk_Alloc(tr.numCubemaps * sizeof(*tr.cubemaps), h_low);
+	memset(tr.cubemaps, 0, tr.numCubemaps * sizeof(*tr.cubemaps));
 
 	numCubemaps = 0;
 	while(R_ParseSpawnVars(spawnVarChars, sizeof(spawnVarChars), &numSpawnVars, spawnVars))
 	{
 		int i;
+		char name[MAX_QPATH];
 		qboolean isCubemap = qfalse;
-		qboolean positionSet = qfalse;
+		qboolean originSet = qfalse;
 		vec3_t origin;
+		float parallaxRadius = 1000.0f;
 
+		name[0] = '\0';
 		for (i = 0; i < numSpawnVars; i++)
 		{
 			if (!Q_stricmp(spawnVars[i][0], "classname") && !Q_stricmp(spawnVars[i][1], cubemapEntityName))
 				isCubemap = qtrue;
 
+			if (!Q_stricmp(spawnVars[i][0], "name"))
+				Q_strncpyz(name, spawnVars[i][1], MAX_QPATH);
+
 			if (!Q_stricmp(spawnVars[i][0], "origin"))
 			{
 				sscanf(spawnVars[i][1], "%f %f %f", &origin[0], &origin[1], &origin[2]);
-				positionSet = qtrue;
+				originSet = qtrue;
+			}
+			else if (!Q_stricmp(spawnVars[i][0], "radius"))
+			{
+				sscanf(spawnVars[i][1], "%f", &parallaxRadius);
 			}
 		}
 
-		if (isCubemap && positionSet)
+		if (isCubemap && originSet)
 		{
-			//ri.Printf(PRINT_ALL, "cubemap at %f %f %f\n", origin[0], origin[1], origin[2]);
-			VectorCopy(origin, tr.cubemapOrigins[numCubemaps]);
+			cubemap_t *cubemap = &tr.cubemaps[numCubemaps];
+			Q_strncpyz(cubemap->name, name, MAX_QPATH);
+			VectorCopy(origin, cubemap->origin);
+			cubemap->parallaxRadius = parallaxRadius;
 			numCubemaps++;
 		}
 	}
@@ -2892,354 +3143,42 @@ void R_AssignCubemapsToWorldSurfaces(void)
 }
 
 
-void R_RenderAllCubemaps(void)
+void R_LoadCubemaps(void)
 {
-	int i, j;
+	int i;
+	imgFlags_t flags = IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE | IMGFLAG_CUBEMAP;
 
 	for (i = 0; i < tr.numCubemaps; i++)
 	{
-		tr.cubemaps[i] = R_CreateImage(va("*cubeMap%d", i), NULL, CUBE_MAP_SIZE, CUBE_MAP_SIZE, IMGTYPE_COLORALPHA, IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_CUBEMAP, GL_RGBA8);
-	}
-	
-	for (i = 0; i < tr.numCubemaps; i++)
-	{
-		for (j = 0; j < 6; j++)
-		{
-			RE_ClearScene();
-			R_RenderCubemapSide(i, j, qfalse);
-			R_IssuePendingRenderCommands();
-			R_InitNextFrame();
-		}
+		char filename[MAX_QPATH];
+		cubemap_t *cubemap = &tr.cubemaps[i];
+
+		Com_sprintf(filename, MAX_QPATH, "cubemaps/%s/%03d.dds", tr.world->baseName, i);
+
+		cubemap->image = R_FindImageFile(filename, IMGTYPE_COLORALPHA, flags);
 	}
 }
 
 
-/*
-=================
-R_MergeLeafSurfaces
-
-Merges surfaces that share a common leaf
-=================
-*/
-void R_MergeLeafSurfaces(void)
+void R_RenderMissingCubemaps(void)
 {
-	int i, j, k;
-	int numWorldSurfaces;
-	int mergedSurfIndex;
-	int numMergedSurfaces;
-	int numUnmergedSurfaces;
-	VBO_t *vbo;
-	IBO_t *ibo;
+	int i, j;
+	imgFlags_t flags = IMGFLAG_NO_COMPRESSION | IMGFLAG_CLAMPTOEDGE | IMGFLAG_MIPMAP | IMGFLAG_NOLIGHTSCALE | IMGFLAG_CUBEMAP;
 
-	msurface_t *mergedSurf;
-
-	glIndex_t *iboIndexes, *outIboIndexes;
-	int numIboIndexes;
-
-	int startTime, endTime;
-
-	startTime = ri.Milliseconds();
-
-	numWorldSurfaces = s_worldData.numWorldSurfaces;
-
-	// use viewcount to keep track of mergers
-	for (i = 0; i < numWorldSurfaces; i++)
+	for (i = 0; i < tr.numCubemaps; i++)
 	{
-		s_worldData.surfacesViewCount[i] = -1;
-	}
-
-	// mark matching surfaces
-	for (i = 0; i < s_worldData.numnodes - s_worldData.numDecisionNodes; i++)
-	{
-		mnode_t *leaf = s_worldData.nodes + s_worldData.numDecisionNodes + i;
-
-		for (j = 0; j < leaf->nummarksurfaces; j++)
+		if (!tr.cubemaps[i].image)
 		{
-			msurface_t *surf1;
-			shader_t *shader1;
-			int fogIndex1;
-			int cubemapIndex1;
-			int surfNum1;
+			tr.cubemaps[i].image = R_CreateImage(va("*cubeMap%d", i), NULL, r_cubemapSize->integer, r_cubemapSize->integer, IMGTYPE_COLORALPHA, flags, GL_RGBA8);
 
-			surfNum1 = *(s_worldData.marksurfaces + leaf->firstmarksurface + j);
-
-			if (s_worldData.surfacesViewCount[surfNum1] != -1)
-				continue;
-
-			surf1 = s_worldData.surfaces + surfNum1;
-
-			if ((*surf1->data != SF_GRID) && (*surf1->data != SF_TRIANGLES) && (*surf1->data != SF_FACE))
-				continue;
-
-			shader1 = surf1->shader;
-
-			if(shader1->isSky)
-				continue;
-
-			if(shader1->isPortal)
-				continue;
-
-			if(ShaderRequiresCPUDeforms(shader1))
-				continue;
-
-			fogIndex1 = surf1->fogIndex;
-			cubemapIndex1 = surf1->cubemapIndex;
-
-			s_worldData.surfacesViewCount[surfNum1] = surfNum1;
-
-			for (k = j + 1; k < leaf->nummarksurfaces; k++)
+			for (j = 0; j < 6; j++)
 			{
-				msurface_t *surf2;
-				shader_t *shader2;
-				int fogIndex2;
-				int cubemapIndex2;
-				int surfNum2;
-
-				surfNum2 = *(s_worldData.marksurfaces + leaf->firstmarksurface + k);
-
-				if (s_worldData.surfacesViewCount[surfNum2] != -1)
-					continue;
-				
-				surf2 = s_worldData.surfaces + surfNum2;
-
-				if ((*surf2->data != SF_GRID) && (*surf2->data != SF_TRIANGLES) && (*surf2->data != SF_FACE))
-					continue;
-
-				shader2 = surf2->shader;
-
-				if (shader1 != shader2)
-					continue;
-
-				fogIndex2 = surf2->fogIndex;
-
-				if (fogIndex1 != fogIndex2)
-					continue;
-
-				cubemapIndex2 = surf2->cubemapIndex;
-
-				if (cubemapIndex1 != cubemapIndex2)
-					continue;
-
-				s_worldData.surfacesViewCount[surfNum2] = surfNum1;
+				RE_ClearScene();
+				R_RenderCubemapSide(i, j, qfalse);
+				R_IssuePendingRenderCommands();
+				R_InitNextFrame();
 			}
 		}
-	}
-
-	// don't add surfaces that don't merge to any others to the merged list
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		qboolean merges = qfalse;
-
-		if (s_worldData.surfacesViewCount[i] != i)
-			continue;
-
-		for (j = 0; j < numWorldSurfaces; j++)
-		{
-			if (j == i)
-				continue;
-
-			if (s_worldData.surfacesViewCount[j] == i)
-			{
-				merges = qtrue;
-				break;
-			}
-		}
-
-		if (!merges)
-			s_worldData.surfacesViewCount[i] = -1;
-	}	
-
-	// count merged/unmerged surfaces
-	numMergedSurfaces = 0;
-	numUnmergedSurfaces = 0;
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		if (s_worldData.surfacesViewCount[i] == i)
-		{
-			numMergedSurfaces++;
-		}
-		else if (s_worldData.surfacesViewCount[i] == -1)
-		{
-			numUnmergedSurfaces++;
-		}
-	}
-
-	// Allocate merged surfaces
-	s_worldData.mergedSurfaces = ri.Hunk_Alloc(sizeof(*s_worldData.mergedSurfaces) * numMergedSurfaces, h_low);
-	s_worldData.mergedSurfacesViewCount = ri.Hunk_Alloc(sizeof(*s_worldData.mergedSurfacesViewCount) * numMergedSurfaces, h_low);
-	s_worldData.mergedSurfacesDlightBits = ri.Hunk_Alloc(sizeof(*s_worldData.mergedSurfacesDlightBits) * numMergedSurfaces, h_low);
-	s_worldData.mergedSurfacesPshadowBits = ri.Hunk_Alloc(sizeof(*s_worldData.mergedSurfacesPshadowBits) * numMergedSurfaces, h_low);
-	s_worldData.numMergedSurfaces = numMergedSurfaces;
-	
-	// view surfaces are like mark surfaces, except negative ones represent merged surfaces
-	// -1 represents 0, -2 represents 1, and so on
-	s_worldData.viewSurfaces = ri.Hunk_Alloc(sizeof(*s_worldData.viewSurfaces) * s_worldData.nummarksurfaces, h_low);
-
-	// copy view surfaces into mark surfaces
-	for (i = 0; i < s_worldData.nummarksurfaces; i++)
-	{
-		s_worldData.viewSurfaces[i] = s_worldData.marksurfaces[i];
-	}
-
-	// need to be synched here
-	R_IssuePendingRenderCommands();
-
-	// actually merge surfaces
-	numIboIndexes = 0;
-	mergedSurfIndex = 0;
-	mergedSurf = s_worldData.mergedSurfaces;
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		msurface_t *surf1;
-
-		vec3_t bounds[2];
-
-		int numSurfsToMerge;
-		int numIndexes;
-		int numVerts;
-		int firstIndex;
-
-		srfBspSurface_t *vboSurf;
-
-		if (s_worldData.surfacesViewCount[i] != i)
-			continue;
-		
-		surf1 = s_worldData.surfaces + i;
-
-		// retrieve vbo
-		vbo = ((srfBspSurface_t *)(surf1->data))->vbo;
-
-		// count verts, indexes, and surfaces
-		numSurfsToMerge = 0;
-		numIndexes = 0;
-		numVerts = 0;
-		for (j = i; j < numWorldSurfaces; j++)
-		{
-			msurface_t *surf2;
-			srfBspSurface_t *bspSurf;
-
-			if (s_worldData.surfacesViewCount[j] != i)
-				continue;
-
-			surf2 = s_worldData.surfaces + j;
-
-			bspSurf = (srfBspSurface_t *) surf2->data;
-			numIndexes += bspSurf->numIndexes;
-			numVerts += bspSurf->numVerts;
-			numSurfsToMerge++;
-		}
-
-		if (numVerts == 0 || numIndexes == 0 || numSurfsToMerge < 2)
-		{
-			continue;
-		}
-
-		// create ibo
-		ibo = tr.ibos[tr.numIBOs] = ri.Hunk_Alloc(sizeof(*ibo), h_low);
-		memset(ibo, 0, sizeof(*ibo));
-		Q_strncpyz(ibo->name, va("staticWorldMesh_IBO_mergedSurfs%i", tr.numIBOs++), sizeof(ibo->name));
-		numIboIndexes = 0;
-
-		// allocate indexes
-		iboIndexes = outIboIndexes = ri.Malloc(numIndexes * sizeof(*outIboIndexes));
-
-		// Merge surfaces (indexes) and calculate bounds
-		ClearBounds(bounds[0], bounds[1]);
-		firstIndex = numIboIndexes;
-		for (j = i; j < numWorldSurfaces; j++)
-		{
-			msurface_t *surf2;
-			srfBspSurface_t *bspSurf;
-
-			if (s_worldData.surfacesViewCount[j] != i)
-				continue;
-
-			surf2 = s_worldData.surfaces + j;
-
-			AddPointToBounds(surf2->cullinfo.bounds[0], bounds[0], bounds[1]);
-			AddPointToBounds(surf2->cullinfo.bounds[1], bounds[0], bounds[1]);
-
-			bspSurf = (srfBspSurface_t *) surf2->data;
-			for (k = 0; k < bspSurf->numIndexes; k++)
-			{
-				*outIboIndexes++ = bspSurf->indexes[k] + bspSurf->firstVert;
-				numIboIndexes++;
-			}
-			break;
-		}
-
-		vboSurf = ri.Hunk_Alloc(sizeof(*vboSurf), h_low);
-		memset(vboSurf, 0, sizeof(*vboSurf));
-		vboSurf->surfaceType = SF_VBO_MESH;
-
-		vboSurf->vbo = vbo;
-		vboSurf->ibo = ibo;
-
-		vboSurf->numIndexes = numIndexes;
-		vboSurf->numVerts = numVerts;
-		vboSurf->firstIndex = firstIndex;
-
-		vboSurf->minIndex = *(iboIndexes + firstIndex);
-		vboSurf->maxIndex = *(iboIndexes + firstIndex);
-
-		for (j = 0; j < numIndexes; j++)
-		{
-			vboSurf->minIndex = MIN(vboSurf->minIndex, *(iboIndexes + firstIndex + j));
-			vboSurf->maxIndex = MAX(vboSurf->maxIndex, *(iboIndexes + firstIndex + j));
-		}
-
-		VectorCopy(bounds[0], vboSurf->cullBounds[0]);
-		VectorCopy(bounds[1], vboSurf->cullBounds[1]);
-
-		VectorCopy(bounds[0], mergedSurf->cullinfo.bounds[0]);
-		VectorCopy(bounds[1], mergedSurf->cullinfo.bounds[1]);
-
-		mergedSurf->cullinfo.type = CULLINFO_BOX;
-		mergedSurf->data          = (surfaceType_t *)vboSurf;
-		mergedSurf->fogIndex      = surf1->fogIndex;
-		mergedSurf->cubemapIndex  = surf1->cubemapIndex;
-		mergedSurf->shader        = surf1->shader;
-
-		// finish up the ibo
-		qglGenBuffersARB(1, &ibo->indexesVBO);
-
-		R_BindIBO(ibo);
-		qglBufferDataARB(GL_ELEMENT_ARRAY_BUFFER_ARB, numIboIndexes * sizeof(*iboIndexes), iboIndexes, GL_STATIC_DRAW_ARB);
-		R_BindNullIBO();
-
-		GL_CheckErrors();
-
-		ri.Free(iboIndexes);
-
-		// redirect view surfaces to this surf
-		for (j = 0; j < numWorldSurfaces; j++)
-		{
-			if (s_worldData.surfacesViewCount[j] != i)
-				continue;
-
-			for (k = 0; k < s_worldData.nummarksurfaces; k++)
-			{
-				int *mark = s_worldData.marksurfaces + k;
-				int *view = s_worldData.viewSurfaces + k;
-
-				if (*mark == j)
-					*view = -(mergedSurfIndex + 1);
-			}
-		}
-
-		mergedSurfIndex++;
-		mergedSurf++;
-	}
-
-	endTime = ri.Milliseconds();
-
-	ri.Printf(PRINT_ALL, "Processed %d surfaces into %d merged, %d unmerged in %5.2f seconds\n", 
-		numWorldSurfaces, numMergedSurfaces, numUnmergedSurfaces, (endTime - startTime) / 1000.0f);
-
-	// reset viewcounts
-	for (i = 0; i < numWorldSurfaces; i++)
-	{
-		s_worldData.surfacesViewCount[i] = -1;
 	}
 }
 
@@ -3310,6 +3249,9 @@ void RE_LoadWorldMap( const char *name ) {
 	tr.toneMinAvgMaxLevel[0] = -8.0f;
 	tr.toneMinAvgMaxLevel[1] = -2.0f;
 	tr.toneMinAvgMaxLevel[2] = 0.0f;
+
+	// reset last cascade sun direction so last shadow cascade is rerendered
+	VectorClear(tr.lastCascadeSunDirection);
 
 	tr.worldMapLoaded = qtrue;
 
@@ -3552,7 +3494,14 @@ void RE_LoadWorldMap( const char *name ) {
 	// load cubemaps
 	if (r_cubeMapping->integer)
 	{
-		R_LoadCubemapEntities("misc_cubemap");
+		// Try loading an env.json file first
+		R_LoadEnvironmentJson(s_worldData.baseName);
+
+		if (!tr.numCubemaps)
+		{
+			R_LoadCubemapEntities("misc_cubemap");
+		}
+
 		if (!tr.numCubemaps)
 		{
 			// use deathmatch spawn points as cubemaps
@@ -3565,26 +3514,22 @@ void RE_LoadWorldMap( const char *name ) {
 		}
 	}
 
-	// create static VBOS from the world
-	R_CreateWorldVBOs();
-	if (r_mergeLeafSurfaces->integer)
-	{
-		R_MergeLeafSurfaces();
-	}
+	// create static VAOS from the world
+	R_CreateWorldVaos();
 
 	s_worldData.dataSize = (byte *)ri.Hunk_Alloc(0, h_low) - startMarker;
 
 	// only set tr.world now that we know the entire level has loaded properly
 	tr.world = &s_worldData;
 
-	// make sure the VBO glState entries are safe
-	R_BindNullVBO();
-	R_BindNullIBO();
+	// make sure the VAO glState entry is safe
+	R_BindNullVao();
 
-	// Render all cubemaps
+	// Render or load all cubemaps
 	if (r_cubeMapping->integer && tr.numCubemaps)
 	{
-		R_RenderAllCubemaps();
+		R_LoadCubemaps();
+		R_RenderMissingCubemaps();
 	}
 
     ri.FS_FreeFile( buffer.v );

@@ -49,8 +49,6 @@ int CG_Text_Width(const char *text, float scale, int limit) {
 	float out;
 	glyphInfo_t *glyph;
 	float useScale;
-// FIXME: see ui_main.c, same problem
-//	const unsigned char *s = text;
 	const char *s = text;
 	fontInfo_t *font = &cgDC.Assets.textFont;
 	if (scale <= cg_smallFont.value) {
@@ -71,7 +69,7 @@ int CG_Text_Width(const char *text, float scale, int limit) {
 				s += 2;
 				continue;
 			} else {
-				glyph = &font->glyphs[(int)*s]; // TTimo: FIXME: getting nasty warnings without the cast, hopefully this doesn't break the VM build
+				glyph = &font->glyphs[*s & 255];
 				out += glyph->xSkip;
 				s++;
 				count++;
@@ -86,8 +84,6 @@ int CG_Text_Height(const char *text, float scale, int limit) {
 	float max;
 	glyphInfo_t *glyph;
 	float useScale;
-// TTimo: FIXME
-//	const unsigned char *s = text;
 	const char *s = text;
 	fontInfo_t *font = &cgDC.Assets.textFont;
 	if (scale <= cg_smallFont.value) {
@@ -108,7 +104,7 @@ int CG_Text_Height(const char *text, float scale, int limit) {
 				s += 2;
 				continue;
 			} else {
-				glyph = &font->glyphs[(int)*s]; // TTimo: FIXME: getting nasty warnings without the cast, hopefully this doesn't break the VM build
+				glyph = &font->glyphs[*s & 255];
 	      if (max < glyph->height) {
 		      max = glyph->height;
 			  }
@@ -141,8 +137,6 @@ void CG_Text_Paint(float x, float y, float scale, vec4_t color, const char *text
 	}
 	useScale = scale * font->glyphScale;
   if (text) {
-// TTimo: FIXME
-//		const unsigned char *s = text;
 		const char *s = text;
 		trap_R_SetColor( color );
 		memcpy(&newColor[0], &color[0], sizeof(vec4_t));
@@ -152,7 +146,7 @@ void CG_Text_Paint(float x, float y, float scale, vec4_t color, const char *text
 		}
 		count = 0;
 		while (s && *s && count < len) {
-			glyph = &font->glyphs[(int)*s]; // TTimo: FIXME: getting nasty warnings without the cast, hopefully this doesn't break the VM build
+			glyph = &font->glyphs[*s & 255];
       //int yadj = Assets.textFont.glyphs[text[i]].bottom + Assets.textFont.glyphs[text[i]].top;
       //float yadj = scale * (Assets.textFont.glyphs[text[i]].imageHeight - Assets.textFont.glyphs[text[i]].height);
 			if ( Q_IsColorString( s ) ) {
@@ -685,6 +679,11 @@ static float CG_DrawAttacker( float y ) {
 		return y;
 	}
 
+	if ( !cgs.clientinfo[clientNum].infoValid ) {
+		cg.attackerTime = 0;
+		return y;
+	}
+
 	t = cg.time - cg.attackerTime;
 	if ( t > ATTACKER_HEAD_TIME ) {
 		cg.attackerTime = 0;
@@ -995,7 +994,7 @@ static void CG_DrawUpperRight(stereoFrame_t stereoFrame)
 		y = CG_DrawTimer( y );
 	}
 	if ( cg_drawAttacker.integer ) {
-		y = CG_DrawAttacker( y );
+		CG_DrawAttacker( y );
 	}
 
 }
@@ -1281,7 +1280,7 @@ static void CG_DrawLowerRight( void ) {
 	} 
 
 	y = CG_DrawScores( y );
-	y = CG_DrawPowerups( y );
+	CG_DrawPowerups( y );
 }
 #endif // MISSIONPACK
 
@@ -1334,7 +1333,7 @@ static void CG_DrawLowerLeft( void ) {
 	} 
 
 
-	y = CG_DrawPickupItem( y );
+	CG_DrawPickupItem( y );
 }
 #endif // MISSIONPACK
 
@@ -1905,6 +1904,8 @@ static void CG_DrawCrosshair(void)
 	trap_R_DrawStretchPic( x + cg.refdef.x + 0.5 * (cg.refdef.width - w), 
 		y + cg.refdef.y + 0.5 * (cg.refdef.height - h), 
 		w, h, 0, 0, 1, 1, hShader );
+
+	trap_R_SetColor( NULL );
 }
 
 /*
@@ -2304,8 +2305,7 @@ static void CG_DrawProxWarning( void ) {
 	char s [32];
 	int			w;
   static int proxTime;
-  static int proxCounter;
-  static int proxTick;
+  int proxTick;
 
 	if( !(cg.snap->ps.eFlags & EF_TICKING ) ) {
     proxTime = 0;
@@ -2313,17 +2313,12 @@ static void CG_DrawProxWarning( void ) {
 	}
 
   if (proxTime == 0) {
-    proxTime = cg.time + 5000;
-    proxCounter = 5;
-    proxTick = 0;
+    proxTime = cg.time;
   }
 
-  if (cg.time > proxTime) {
-    proxTick = proxCounter--;
-    proxTime = cg.time + 1000;
-  }
+  proxTick = 10 - ((cg.time - proxTime) / 1000);
 
-  if (proxTick != 0) {
+  if (proxTick > 0 && proxTick <= 5) {
     Com_sprintf(s, sizeof(s), "INTERNAL COMBUSTION IN: %i", proxTick);
   } else {
     Com_sprintf(s, sizeof(s), "YOU HAVE BEEN MINED");

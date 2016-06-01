@@ -552,12 +552,12 @@ Upload32
 
 ===============
 */
-extern qboolean charSet;
 static void Upload32( unsigned *data, 
 						  int width, int height, 
 						  qboolean mipmap, 
 						  qboolean picmip, 
 							qboolean lightMap,
+						  qboolean allowCompression,
 						  int *format, 
 						  int *pUploadWidth, int *pUploadHeight )
 {
@@ -693,11 +693,11 @@ static void Upload32( unsigned *data,
 			}
 			else
 			{
-				if ( glConfig.textureCompression == TC_S3TC_ARB )
+				if ( allowCompression && glConfig.textureCompression == TC_S3TC_ARB )
 				{
 					internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT1_EXT;
 				}
-				else if ( glConfig.textureCompression == TC_S3TC )
+				else if ( allowCompression && glConfig.textureCompression == TC_S3TC )
 				{
 					internalFormat = GL_RGB4_S3TC;
 				}
@@ -893,6 +893,7 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height,
 								image->flags & IMGFLAG_MIPMAP,
 								image->flags & IMGFLAG_PICMIP,
 								isLightmap,
+								!(image->flags & IMGFLAG_NO_COMPRESSION),
 								&image->internalFormat,
 								&image->uploadWidth,
 								&image->uploadHeight );
@@ -900,7 +901,6 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height,
 	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, glWrapClampMode );
 	qglTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, glWrapClampMode );
 
-	// FIXME: this stops fog from setting border color?
 	glState.currenttextures[glState.currenttmu] = 0;
 	qglBindTexture( GL_TEXTURE_2D, 0 );
 
@@ -1169,7 +1169,6 @@ static void R_CreateFogImage( void ) {
 	int		x,y;
 	byte	*data;
 	float	d;
-	float	borderColor[4];
 
 	data = ri.Hunk_AllocateTempMemory( FOG_S * FOG_T * 4 );
 
@@ -1184,18 +1183,8 @@ static void R_CreateFogImage( void ) {
 			data[(y*FOG_S+x)*4+3] = 255*d;
 		}
 	}
-	// standard openGL clamping doesn't really do what we want -- it includes
-	// the border color at the edges.  OpenGL 1.2 has clamp-to-edge, which does
-	// what we want.
 	tr.fogImage = R_CreateImage("*fog", (byte *)data, FOG_S, FOG_T, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
 	ri.Hunk_FreeTempMemory( data );
-
-	borderColor[0] = 1.0;
-	borderColor[1] = 1.0;
-	borderColor[2] = 1.0;
-	borderColor[3] = 1;
-
-	qglTexParameterfv( GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor );
 }
 
 /*
@@ -1444,12 +1433,15 @@ static char *CommaParse( char **data_p ) {
 		// skip double slash comments
 		if ( c == '/' && data[1] == '/' )
 		{
-			while (*data && *data != '\n')
+			data += 2;
+			while (*data && *data != '\n') {
 				data++;
+			}
 		}
 		// skip /* */ comments
 		else if ( c=='/' && data[1] == '*' ) 
 		{
+			data += 2;
 			while ( *data && ( *data != '*' || data[1] != '/' ) ) 
 			{
 				data++;
@@ -1482,7 +1474,7 @@ static char *CommaParse( char **data_p ) {
 				*data_p = ( char * ) data;
 				return com_token;
 			}
-			if (len < MAX_TOKEN_CHARS)
+			if (len < MAX_TOKEN_CHARS - 1)
 			{
 				com_token[len] = c;
 				len++;
@@ -1493,7 +1485,7 @@ static char *CommaParse( char **data_p ) {
 	// parse a regular word
 	do
 	{
-		if (len < MAX_TOKEN_CHARS)
+		if (len < MAX_TOKEN_CHARS - 1)
 		{
 			com_token[len] = c;
 			len++;
@@ -1502,11 +1494,6 @@ static char *CommaParse( char **data_p ) {
 		c = *data;
 	} while (c>32 && c != ',' );
 
-	if (len == MAX_TOKEN_CHARS)
-	{
-//		ri.Printf (PRINT_DEVELOPER, "Token exceeded %i chars, discarded.\n", MAX_TOKEN_CHARS);
-		len = 0;
-	}
 	com_token[len] = 0;
 
 	*data_p = ( char * ) data;
@@ -1570,7 +1557,7 @@ qhandle_t RE_RegisterSkin( const char *name ) {
 	// If not a .skin file, load as a single shader
 	if ( strcmp( name + strlen( name ) - 5, ".skin" ) ) {
 		skin->numSurfaces = 1;
-		skin->surfaces[0] = ri.Hunk_Alloc( sizeof(skin->surfaces[0]), h_low );
+		skin->surfaces[0] = ri.Hunk_Alloc( sizeof( *skin->surfaces[0] ), h_low );
 		skin->surfaces[0]->shader = R_FindShader( name, LIGHTMAP_NONE, qtrue );
 		return hSkin;
 	}
@@ -1641,7 +1628,7 @@ void	R_InitSkins( void ) {
 	skin = tr.skins[0] = ri.Hunk_Alloc( sizeof( skin_t ), h_low );
 	Q_strncpyz( skin->name, "<default skin>", sizeof( skin->name )  );
 	skin->numSurfaces = 1;
-	skin->surfaces[0] = ri.Hunk_Alloc( sizeof( *skin->surfaces ), h_low );
+	skin->surfaces[0] = ri.Hunk_Alloc( sizeof( *skin->surfaces[0] ), h_low );
 	skin->surfaces[0]->shader = tr.defaultShader;
 }
 

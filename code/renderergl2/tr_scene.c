@@ -335,31 +335,30 @@ void RE_BeginScene(const refdef_t *fd)
 	}
 	else
 	{
+#if defined(USE_OVERBRIGHT)
+		float scale = (1 << (r_mapOverBrightBits->integer - tr.overbrightBits)) / 255.0f;
+#else
+		float scale = (1 << r_mapOverBrightBits->integer) / 255.0f;
+#endif
 		tr.refdef.colorScale = r_forceSun->integer ? r_forceSunMapLightScale->value : tr.mapLightScale;
+
+		if (r_forceSun->integer)
+			VectorScale(tr.sunLight, scale * r_forceSunLightScale->value, tr.refdef.sunCol);
+		else
+			VectorScale(tr.sunLight, scale, tr.refdef.sunCol);
 
 		if (r_sunlightMode->integer == 1)
 		{
-			tr.refdef.sunCol[0] =
-			tr.refdef.sunCol[1] =
-			tr.refdef.sunCol[2] = 1.0f;
-
 			tr.refdef.sunAmbCol[0] =
 			tr.refdef.sunAmbCol[1] =
 			tr.refdef.sunAmbCol[2] = r_forceSun->integer ? r_forceSunAmbientScale->value : tr.sunShadowScale;
 		}
 		else
 		{
-			float scale = pow(2, r_mapOverBrightBits->integer - tr.overbrightBits - 8);
 			if (r_forceSun->integer)
-			{
-				VectorScale(tr.sunLight, scale * r_forceSunLightScale->value,   tr.refdef.sunCol);
 				VectorScale(tr.sunLight, scale * r_forceSunAmbientScale->value, tr.refdef.sunAmbCol);
-			}
 			else
-			{
-				VectorScale(tr.sunLight, scale,                     tr.refdef.sunCol);
 				VectorScale(tr.sunLight, scale * tr.sunShadowScale, tr.refdef.sunAmbCol);
-			}
 		}
 	}
 
@@ -498,9 +497,30 @@ void RE_RenderScene( const refdef_t *fd ) {
 	// playing with even more shadows
 	if(glRefConfig.framebufferObject && r_sunlightMode->integer && !( fd->rdflags & RDF_NOWORLDMODEL ) && (r_forceSun->integer || tr.sunShadows))
 	{
-		R_RenderSunShadowMaps(fd, 0);
-		R_RenderSunShadowMaps(fd, 1);
-		R_RenderSunShadowMaps(fd, 2);
+		if (r_shadowCascadeZFar != 0)
+		{
+			R_RenderSunShadowMaps(fd, 0);
+			R_RenderSunShadowMaps(fd, 1);
+			R_RenderSunShadowMaps(fd, 2);
+		}
+		else
+		{
+			Mat4Zero(tr.refdef.sunShadowMvp[0]);
+			Mat4Zero(tr.refdef.sunShadowMvp[1]);
+			Mat4Zero(tr.refdef.sunShadowMvp[2]);
+		}
+
+		// only rerender last cascade if sun has changed position
+		if (r_forceSun->integer == 2 || !VectorCompare(tr.refdef.sunDir, tr.lastCascadeSunDirection))
+		{
+			VectorCopy(tr.refdef.sunDir, tr.lastCascadeSunDirection);
+			R_RenderSunShadowMaps(fd, 3);
+			Mat4Copy(tr.refdef.sunShadowMvp[3], tr.lastCascadeSunMvp);
+		}
+		else
+		{
+			Mat4Copy(tr.lastCascadeSunMvp, tr.refdef.sunShadowMvp[3]);
+		}
 	}
 
 	// playing with cube maps

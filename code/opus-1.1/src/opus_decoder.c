@@ -33,7 +33,7 @@
 # error "OPUS_BUILD _MUST_ be defined to build Opus. This probably means you need other defines as well, as in a config.h. See the included build files for details."
 #endif
 
-#if defined(__GNUC__) && (__GNUC__ >= 2) && !defined(__OPTIMIZE__)
+#if defined(__GNUC__) && (__GNUC__ >= 2) && !defined(__OPTIMIZE__) && !defined(__APPLE__)
 # pragma message "You appear to be compiling without optimization, if so opus will be very slow."
 #endif
 
@@ -215,7 +215,7 @@ static int opus_decode_frame(OpusDecoder *st, const unsigned char *data,
    VARDECL(opus_val16, pcm_transition_silk);
    int pcm_transition_celt_size;
    VARDECL(opus_val16, pcm_transition_celt);
-   opus_val16 *pcm_transition;
+   opus_val16 *pcm_transition=NULL;
    int redundant_audio_size;
    VARDECL(opus_val16, redundant_audio);
 

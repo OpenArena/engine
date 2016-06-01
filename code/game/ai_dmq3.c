@@ -1487,7 +1487,7 @@ EasyClientName
 char *EasyClientName(int client, char *buf, int size) {
 	int i;
 	char *str1, *str2, *ptr, c;
-	char name[128];
+	char name[128] = {0};
 
 	ClientName(client, name, sizeof(name));
 	
@@ -2876,6 +2876,7 @@ float BotEntityVisible(int viewer, vec3_t eye, vec3_t viewangles, float fov, int
 		BotAI_Trace(&trace, start, NULL, NULL, end, passent, contents_mask);
 		//if water was hit
 		waterfactor = 1.0;
+		//note: trace.contents is always 0, see BotAI_Trace
 		if (trace.contents & (CONTENTS_LAVA|CONTENTS_SLIME|CONTENTS_WATER)) {
 			//if the water surface is translucent
 			if (1) {
@@ -4432,6 +4433,9 @@ open, which buttons to activate etc.
 ==================
 */
 void BotAIBlocked(bot_state_t *bs, bot_moveresult_t *moveresult, int activate) {
+#ifdef OBSTACLEDEBUG
+	char netname[MAX_NETNAME];
+#endif
 	int movetype, bspent;
 	vec3_t hordir, sideward, angles, up = {0, 0, 1};
 	//vec3_t start, end, mins, maxs;
@@ -5006,6 +5010,7 @@ void BotCheckEvents(bot_state_t *bs, entityState_t *state) {
 		case EV_USE_ITEM12:
 		case EV_USE_ITEM13:
 		case EV_USE_ITEM14:
+		case EV_USE_ITEM15:
 			break;
 	}
 }

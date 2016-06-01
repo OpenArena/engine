@@ -203,19 +203,25 @@ static void EmitRexString(byte rex, const char *string)
 
 
 #define MASK_REG(modrm, mask) \
-	EmitString("81"); \
-	EmitString((modrm)); \
-	Emit4((mask))
+	do { \
+		EmitString("81"); \
+		EmitString((modrm)); \
+		Emit4((mask)); \
+	} while(0)
 
 // add bl, bytes
 #define STACK_PUSH(bytes) \
-	EmitString("80 C3"); \
-	Emit1(bytes)
+	do { \
+		EmitString("80 C3"); \
+		Emit1(bytes); \
+	} while(0)
 
 // sub bl, bytes
 #define STACK_POP(bytes) \
-	EmitString("80 EB"); \
-	Emit1(bytes)
+	do { \
+		EmitString("80 EB"); \
+		Emit1(bytes); \
+	} while(0)
 
 static void EmitCommand(ELastCommand command)
 {
@@ -412,23 +418,24 @@ static void DoSyscall(void)
 
 	if(vm_syscallNum < 0)
 	{
-		int *data;
+		int *data, *ret;
 #if idx64
 		int index;
 		intptr_t args[MAX_VMSYSCALL_ARGS];
 #endif
 		
 		data = (int *) (savedVM->dataBase + vm_programStack + 4);
+		ret = &vm_opStackBase[vm_opStackOfs + 1];
 
 #if idx64
 		args[0] = ~vm_syscallNum;
 		for(index = 1; index < ARRAY_LEN(args); index++)
 			args[index] = data[index];
 			
-		vm_opStackBase[vm_opStackOfs + 1] = savedVM->systemCall(args);
+		*ret = savedVM->systemCall(args);
 #else
 		data[0] = ~vm_syscallNum;
-		vm_opStackBase[vm_opStackOfs + 1] = savedVM->systemCall((intptr_t *) data);
+		*ret = savedVM->systemCall((intptr_t *) data);
 #endif
 	}
 	else
@@ -1087,8 +1094,9 @@ void VM_Compile(vm_t *vm, vmHeader_t *header)
 
 	// ensure that the optimisation pass knows about all the jump
 	// table targets
+	pc = -1; // a bogus value to be printed in out-of-bounds error messages
 	for( i = 0; i < vm->numJumpTableTargets; i++ ) {
-		jused[ *(int *)(vm->jumpTableTargets + ( i * sizeof( int ) ) ) ] = 1;
+		JUSED( *(int *)(vm->jumpTableTargets + ( i * sizeof( int ) ) ) );
 	}
 
 	// Start buffer with x86-VM specific procedures

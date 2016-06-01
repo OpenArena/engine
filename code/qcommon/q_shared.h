@@ -36,15 +36,21 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
   #define HOMEPATH_NAME_MACOSX		HOMEPATH_NAME_WIN
   #define GAMENAME_FOR_MASTER		"Quake3Arena"	// must NOT contain whitespace.  No servers show up if you use "openarena"
   #define LEGACY_PROTOCOL		1 // OA still uses the legacy protocol
+  #define CINEMATICS_LOGO		"foologo.roq"
+  #define CINEMATICS_INTRO		"intro.roq"
 #else
-  #define PRODUCT_NAME			"ioq3"
-  #define BASEGAME			"baseq3"
-  #define CLIENT_WINDOW_TITLE     	"ioquake3"
-  #define CLIENT_WINDOW_MIN_TITLE 	"ioq3"
+  #define PRODUCT_NAME				"ioq3"
+  #define BASEGAME					"baseq3"
+  #define CLIENT_WINDOW_TITLE		"ioquake3"
+  #define CLIENT_WINDOW_MIN_TITLE	"ioq3"
   #define HOMEPATH_NAME_UNIX		".q3a"
-  #define HOMEPATH_NAME_WIN		"Quake3"
+  #define HOMEPATH_NAME_WIN			"Quake3"
   #define HOMEPATH_NAME_MACOSX		HOMEPATH_NAME_WIN
+  #define STEAMPATH_NAME			"Quake 3 Arena"
+  #define STEAMPATH_APPID			"2200"
   #define GAMENAME_FOR_MASTER		"Quake3Arena"
+  #define CINEMATICS_LOGO		"idlogo.RoQ"
+  #define CINEMATICS_INTRO		"intro.RoQ"
   #define LEGACY_PROTOCOL
 #endif
 
@@ -405,7 +411,8 @@ extern	vec4_t		colorDkGrey;
 #define COLOR_MAGENTA	'6'
 #define COLOR_WHITE	'7'
 #define COLOR_MENU	'8'
-#define ColorIndex(c)	((c) - '0')
+#define ColorIndexForNumber(c) ((c) % NUMBER_OF_COLORS)
+#define ColorIndex(c) (ColorIndexForNumber((c) - '0'))
 
 #define S_COLOR_BLACK	"^0"
 #define S_COLOR_RED	"^1"
@@ -565,7 +572,7 @@ typedef struct {
 #define Byte4Copy(a,b)			((b)[0]=(a)[0],(b)[1]=(a)[1],(b)[2]=(a)[2],(b)[3]=(a)[3])
 
 #define	SnapVector(v) {v[0]=((int)(v[0]));v[1]=((int)(v[1]));v[2]=((int)(v[2]));}
-// just in case you do't want to use the macros
+// just in case you don't want to use the macros
 vec_t _DotProduct( const vec3_t v1, const vec3_t v2 );
 void _VectorSubtract( const vec3_t veca, const vec3_t vecb, vec3_t out );
 void _VectorAdd( const vec3_t veca, const vec3_t vecb, vec3_t out );
@@ -926,6 +933,7 @@ struct cvar_s {
 	qboolean	integral;
 	float			min;
 	float			max;
+	char			*description;
 
 	cvar_t *next;
 	cvar_t *prev;

@@ -995,14 +995,14 @@ int PC_Directive_include(source_t *source)
 		script = LoadScriptFile(token.string);
 		if (!script)
 		{
-			strcpy(path, source->includepath);
-			strcat(path, token.string);
+			Q_strncpyz(path, source->includepath, sizeof(path));
+			Q_strcat(path, sizeof(path), token.string);
 			script = LoadScriptFile(path);
 		} //end if
 	} //end if
 	else if (token.type == TT_PUNCTUATION && *token.string == '<')
 	{
-		strcpy(path, source->includepath);
+		Q_strncpyz(path, source->includepath, sizeof(path));
 		while(PC_ReadSourceToken(source, &token))
 		{
 			if (token.linescrossed > 0)
@@ -1011,7 +1011,7 @@ int PC_Directive_include(source_t *source)
 				break;
 			} //end if
 			if (token.type == TT_PUNCTUATION && *token.string == '>') break;
-			strncat(path, token.string, MAX_PATH - 1);
+			Q_strcat(path, sizeof(path), token.string);
 		} //end while
 		if (*token.string != '>')
 		{
@@ -2086,9 +2086,12 @@ int PC_EvaluateTokens(source_t *source, token_t *tokens, signed long int *intval
 			//remove the second value if not question mark operator
 			if (o->operator != P_QUESTIONMARK) v = v->next;
 			//
-			if (v->prev) v->prev->next = v->next;
-			else firstvalue = v->next;
-			if (v->next) v->next->prev = v->prev;
+			if (v)
+			{
+				if (v->prev) v->prev->next = v->next;
+				else firstvalue = v->next;
+				if (v->next) v->next->prev = v->prev;
+			}
 			//FreeMemory(v);
 			FreeValue(v);
 		} //end if
@@ -2442,7 +2445,7 @@ int PC_Directive_eval(source_t *source)
 	token.whitespace_p = source->scriptstack->script_p;
 	token.endwhitespace_p = source->scriptstack->script_p;
 	token.linescrossed = 0;
-	sprintf(token.string, "%d", abs(value));
+	sprintf(token.string, "%ld", labs(value));
 	token.type = TT_NUMBER;
 	token.subtype = TT_INTEGER|TT_LONG|TT_DECIMAL;
 	PC_UnreadSourceToken(source, &token);
@@ -2547,12 +2550,12 @@ int PC_DollarDirective_evalint(source_t *source)
 	token.whitespace_p = source->scriptstack->script_p;
 	token.endwhitespace_p = source->scriptstack->script_p;
 	token.linescrossed = 0;
-	sprintf(token.string, "%d", abs(value));
+	sprintf(token.string, "%ld", labs(value));
 	token.type = TT_NUMBER;
 	token.subtype = TT_INTEGER|TT_LONG|TT_DECIMAL;
 
 #ifdef NUMBERVALUE
-	token.intvalue = abs(value);
+	token.intvalue = labs(value);
 	token.floatvalue = token.intvalue;
 #endif //NUMBERVALUE
 
@@ -2831,6 +2834,7 @@ int PC_ExpectTokenType(source_t *source, int type, int subtype, token_t *token)
 	{
 		if ((token->subtype & subtype) != subtype)
 		{
+			strcpy(str, "");
 			if (subtype & TT_DECIMAL) strcpy(str, "decimal");
 			if (subtype & TT_HEX) strcpy(str, "hex");
 			if (subtype & TT_OCTAL) strcpy(str, "octal");
@@ -2954,10 +2958,14 @@ void PC_UnreadToken(source_t *source, token_t *token)
 //============================================================================
 void PC_SetIncludePath(source_t *source, char *path)
 {
-	strncpy(source->includepath, path, MAX_PATH);
+	size_t len;
+
+	Q_strncpyz(source->includepath, path, MAX_PATH-1);
+
+	len = strlen(source->includepath);
 	//add trailing path seperator
-	if (source->includepath[strlen(source->includepath)-1] != '\\' &&
-		source->includepath[strlen(source->includepath)-1] != '/')
+	if (len > 0 && source->includepath[len-1] != '\\' &&
+		source->includepath[len-1] != '/')
 	{
 		strcat(source->includepath, PATHSEPERATOR_STR);
 	} //end if

@@ -659,7 +659,7 @@ Returns the next level the player has not won
 */
 int UI_GetCurrentGame( void ) {
 	int		level;
-	int		rank;
+	int		rank = 0;
 	int		skill;
 	const char *info;
 
@@ -796,7 +796,7 @@ void UI_SPUnlockMedals_f( void ) {
 
 	trap_Cvar_Set( "g_spAwards", awardData );
 
-	trap_Print( "All levels unlocked at 100\n" );
+	trap_Print( "All awards unlocked at 100\n" );
 }
 
 

@@ -50,6 +50,9 @@ void Sys_DestroyConsole( void );
 // Used to determine where to store user-specific files
 static char homePath[ MAX_OSPATH ] = { 0 };
 
+// Used to store the Steam Quake 3 installation path
+static char steamPath[ MAX_OSPATH ] = { 0 };
+
 #ifndef DEDICATED
 static UINT timerResolution = 0;
 #endif
@@ -136,6 +139,56 @@ char *Sys_DefaultHomePath( void )
 
 /*
 ================
+Sys_SteamPath
+================
+*/
+char *Sys_SteamPath( void )
+{
+#if defined(STEAMPATH_NAME) || defined(STEAMPATH_APPID)
+	HKEY steamRegKey;
+	DWORD pathLen = MAX_OSPATH;
+	qboolean finishPath = qfalse;
+
+#ifdef STEAMPATH_APPID
+	// Assuming Steam is a 32-bit app
+	if (!steamPath[0] && !RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Steam App " STEAMPATH_APPID, 0, KEY_QUERY_VALUE | KEY_WOW64_32KEY, &steamRegKey))
+	{
+		pathLen = MAX_OSPATH;
+		if (RegQueryValueEx(steamRegKey, "InstallLocation", NULL, NULL, (LPBYTE)steamPath, &pathLen))
+			steamPath[0] = '\0';
+	}
+#endif
+
+#ifdef STEAMPATH_NAME
+	if (!steamPath[0] && !RegOpenKeyEx(HKEY_CURRENT_USER, "Software\\Valve\\Steam", 0, KEY_QUERY_VALUE, &steamRegKey))
+	{
+		pathLen = MAX_OSPATH;
+		if (RegQueryValueEx(steamRegKey, "SteamPath", NULL, NULL, (LPBYTE)steamPath, &pathLen))
+			if (RegQueryValueEx(steamRegKey, "InstallPath", NULL, NULL, (LPBYTE)steamPath, &pathLen))
+				steamPath[0] = '\0';
+
+		if (steamPath[0])
+			finishPath = qtrue;
+	}
+#endif
+
+	if (steamPath[0])
+	{
+		if (pathLen == MAX_OSPATH)
+			pathLen--;
+
+		steamPath[pathLen] = '\0';
+
+		if (finishPath)
+			Q_strcat(steamPath, MAX_OSPATH, "\\SteamApps\\common\\" STEAMPATH_NAME );
+	}
+#endif
+
+	return steamPath;
+}
+
+/*
+================
 Sys_Milliseconds
 ================
 */
@@ -196,33 +249,6 @@ char *Sys_GetCurrentUser( void )
 	}
 
 	return s_userName;
-}
-
-/*
-================
-Sys_GetClipboardData
-================
-*/
-char *Sys_GetClipboardData( void )
-{
-	char *data = NULL;
-	char *cliptext;
-
-	if ( OpenClipboard( NULL ) != 0 ) {
-		HANDLE hClipboardData;
-
-		if ( ( hClipboardData = GetClipboardData( CF_TEXT ) ) != 0 ) {
-			if ( ( cliptext = GlobalLock( hClipboardData ) ) != 0 ) {
-				data = Z_Malloc( GlobalSize( hClipboardData ) + 1 );
-				Q_strncpyz( data, cliptext, GlobalSize( hClipboardData ) );
-				GlobalUnlock( hClipboardData );
-				
-				strtok( data, "\n\r\b" );
-			}
-		}
-		CloseClipboard();
-	}
-	return data;
 }
 
 #define MEM_THRESHOLD 96*1024*1024
@@ -445,6 +471,7 @@ char **Sys_ListFiles( const char *directory, const char *extension, char *filter
 	intptr_t		findhandle;
 	int			flag;
 	int			i;
+	int			extLen;
 
 	if (filter) {
 
@@ -478,6 +505,8 @@ char **Sys_ListFiles( const char *directory, const char *extension, char *filter
 		flag = _A_SUBDIR;
 	}
 
+	extLen = strlen( extension );
+
 	Com_sprintf( search, sizeof(search), "%s\\*%s", directory, extension );
 
 	// search
@@ -491,6 +520,14 @@ char **Sys_ListFiles( const char *directory, const char *extension, char *filter
 
 	do {
 		if ( (!wantsubs && flag ^ ( findinfo.attrib & _A_SUBDIR )) || (wantsubs && findinfo.attrib & _A_SUBDIR) ) {
+			if (*extension) {
+				if ( strlen( findinfo.name ) < extLen ||
+					Q_stricmp(
+						findinfo.name + strlen( findinfo.name ) - extLen,
+						extension ) ) {
+					continue; // didn't match
+				}
+			}
 			if ( nfiles == MAX_FOUND_FILES - 1 ) {
 				break;
 			}
@@ -680,10 +717,6 @@ dialogResult_t Sys_Dialog( dialogType_t type, const char *message, const char *t
 	}
 }
 
-#ifndef DEDICATED
-static qboolean SDL_VIDEODRIVER_externallySet = qfalse;
-#endif
-
 /*
 ==============
 Sys_GLimpSafeInit
@@ -693,14 +726,6 @@ Windows specific "safe" GL implementation initialisation
 */
 void Sys_GLimpSafeInit( void )
 {
-#ifndef DEDICATED
-	if( !SDL_VIDEODRIVER_externallySet )
-	{
-		// Here, we want to let SDL decide what do to unless
-		// explicitly requested otherwise
-		_putenv( "SDL_VIDEODRIVER=" );
-	}
-#endif
 }
 
 /*
@@ -712,25 +737,6 @@ Windows specific GL implementation initialisation
 */
 void Sys_GLimpInit( void )
 {
-#ifndef DEDICATED
-	if( !SDL_VIDEODRIVER_externallySet )
-	{
-		// It's a little bit weird having in_mouse control the
-		// video driver, but from ioq3's point of view they're
-		// virtually the same except for the mouse input anyway
-		if( Cvar_VariableIntegerValue( "in_mouse" ) == -1 )
-		{
-			// Use the windib SDL backend, which is closest to
-			// the behaviour of idq3 with in_mouse set to -1
-			_putenv( "SDL_VIDEODRIVER=windib" );
-		}
-		else
-		{
-			// Use the DirectX SDL backend
-			_putenv( "SDL_VIDEODRIVER=directx" );
-		}
-	}
-#endif
 }
 #ifndef DEDICATED
 #ifdef USE_CONSOLE_WINDOW
@@ -748,7 +754,6 @@ void Sys_PlatformInit( void )
 {
 #ifndef DEDICATED
 	TIMECAPS ptc;
-	const char *SDL_VIDEODRIVER = getenv( "SDL_VIDEODRIVER" );
 #endif
 
 	Sys_SetFloatEnv();
@@ -763,15 +768,6 @@ void Sys_PlatformInit( void )
 	Sys_CreateConsole();
 
 #endif
-
-	if( SDL_VIDEODRIVER )
-	{
-		Com_Printf( "SDL_VIDEODRIVER is externally set to \"%s\", "
-				"in_mouse -1 will have no effect\n", SDL_VIDEODRIVER );
-		SDL_VIDEODRIVER_externallySet = qtrue;
-	}
-	else
-		SDL_VIDEODRIVER_externallySet = qfalse;
 
 	// leilei - no 3dfx splashes please
 		_putenv("FX_GLIDE_NO_SPLASH=1");

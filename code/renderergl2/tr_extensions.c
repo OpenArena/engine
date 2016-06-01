@@ -28,13 +28,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #endif
 
 #include "tr_local.h"
+#include "tr_dsa.h"
 
 // GL_EXT_draw_range_elements
 void            (APIENTRY * qglDrawRangeElementsEXT) (GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const GLvoid *indices);
 
 // GL_EXT_multi_draw_arrays
-void            (APIENTRY * qglMultiDrawArraysEXT) (GLenum mode, GLint *first, GLsizei *count, GLsizei primcount);
-void            (APIENTRY * qglMultiDrawElementsEXT) (GLenum mode, const GLsizei *count, GLenum type, const GLvoid **indices, GLsizei primcount);
+void            (APIENTRY * qglMultiDrawArraysEXT) (GLenum mode, const GLint *first, const GLsizei *count, GLsizei primcount);
+void            (APIENTRY * qglMultiDrawElementsEXT) (GLenum mode, const GLsizei *count, GLenum type, const GLvoid* *indices, GLsizei primcount);
 
 // GL_ARB_vertex_shader
 void            (APIENTRY * qglBindAttribLocationARB) (GLhandleARB programObj, GLuint index, const GLcharARB * name);
@@ -177,6 +178,56 @@ void (APIENTRY * qglRenderbufferStorageMultisampleEXT)(GLenum target, GLsizei sa
 
 // GL_ARB_draw_buffers
 void (APIENTRY * qglDrawBuffersARB)(GLsizei n, const GLenum *bufs);
+
+// GL_ARB_vertex_array_object
+void (APIENTRY * qglBindVertexArrayARB)(GLuint array);
+void (APIENTRY * qglDeleteVertexArraysARB)(GLsizei n, const GLuint *arrays);
+void (APIENTRY * qglGenVertexArraysARB)(GLsizei n, GLuint *arrays);
+GLboolean (APIENTRY * qglIsVertexArrayARB)(GLuint array);
+
+// GL_EXT_direct_state_access
+GLvoid (APIENTRY * qglBindMultiTexture)(GLenum texunit, GLenum target, GLuint texture);
+GLvoid (APIENTRY * qglTextureParameterf)(GLuint texture, GLenum target, GLenum pname, GLfloat param);
+GLvoid (APIENTRY * qglTextureParameteri)(GLuint texture, GLenum target, GLenum pname, GLint param);
+GLvoid (APIENTRY * qglTextureImage2D)(GLuint texture, GLenum target, GLint level, GLint internalformat,
+	GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const GLvoid *pixels);
+GLvoid (APIENTRY * qglTextureSubImage2D)(GLuint texture, GLenum target, GLint level, GLint xoffset, GLint yoffset,
+	GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid *pixels);
+GLvoid (APIENTRY * qglCopyTextureImage2D)(GLuint texture, GLenum target, GLint level, GLenum internalformat,
+	GLint x, GLint y, GLsizei width, GLsizei height, GLint border);
+GLvoid (APIENTRY * qglCompressedTextureImage2D)(GLuint texture, GLenum target, GLint level, GLenum internalformat,
+	GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid *data);
+GLvoid (APIENTRY * qglCompressedTextureSubImage2D)(GLuint texture, GLenum target, GLint level,
+	GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format,
+	GLsizei imageSize, const GLvoid *data);
+GLvoid (APIENTRY * qglGenerateTextureMipmap)(GLuint texture, GLenum target);
+
+GLvoid(APIENTRY * qglProgramUniform1i)(GLuint program, GLint location, GLint v0);
+GLvoid(APIENTRY * qglProgramUniform1f)(GLuint program, GLint location, GLfloat v0);
+GLvoid(APIENTRY * qglProgramUniform2f)(GLuint program, GLint location,
+	GLfloat v0, GLfloat v1);
+GLvoid(APIENTRY * qglProgramUniform3f)(GLuint program, GLint location,
+	GLfloat v0, GLfloat v1, GLfloat v2);
+GLvoid(APIENTRY * qglProgramUniform4f)(GLuint program, GLint location,
+	GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+GLvoid(APIENTRY * qglProgramUniform1fv)(GLuint program, GLint location,
+	GLsizei count, const GLfloat *value);
+GLvoid(APIENTRY * qglProgramUniformMatrix4fv)(GLuint program, GLint location,
+	GLsizei count, GLboolean transpose,
+	const GLfloat *value);
+
+GLvoid(APIENTRY * qglNamedRenderbufferStorage)(GLuint renderbuffer,
+	GLenum internalformat, GLsizei width, GLsizei height);
+
+GLvoid(APIENTRY * qglNamedRenderbufferStorageMultisample)(GLuint renderbuffer,
+	GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
+
+GLenum(APIENTRY * qglCheckNamedFramebufferStatus)(GLuint framebuffer, GLenum target);
+GLvoid(APIENTRY * qglNamedFramebufferTexture2D)(GLuint framebuffer,
+	GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+GLvoid(APIENTRY * qglNamedFramebufferRenderbuffer)(GLuint framebuffer,
+	GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
+
 
 static qboolean GLimp_HaveExtension(const char *ext)
 {
@@ -579,6 +630,22 @@ void GLimp_InitExtraExtensions()
 		ri.Printf(PRINT_ALL, result[2], extension);
 	}
 
+	// GL_ARB_texture_compression
+	extension = "GL_ARB_texture_compression";
+	glRefConfig.arbTextureCompression = qfalse;
+	if (GLimp_HaveExtension(extension))
+	{
+		qglCompressedTexImage3DARB = (void *)SDL_GL_GetProcAddress("glCompressedTexImage3DARB");
+		qglCompressedTexImage2DARB = (void *)SDL_GL_GetProcAddress("glCompressedTexImage2DARB");
+		qglCompressedTexImage1DARB = (void *)SDL_GL_GetProcAddress("glCompressedTexImage1DARB");
+		qglCompressedTexSubImage3DARB = (void *)SDL_GL_GetProcAddress("glCompressedTexSubImage3DARB");
+		qglCompressedTexSubImage2DARB = (void *)SDL_GL_GetProcAddress("glCompressedTexSubImage2DARB");
+		qglCompressedTexSubImage1DARB = (void *)SDL_GL_GetProcAddress("glCompressedTexSubImage1DARB");
+		qglGetCompressedTexImageARB = (void *)SDL_GL_GetProcAddress("glGetCompressedTexImageARB");
+		glRefConfig.arbTextureCompression = qtrue;
+		ri.Printf(PRINT_ALL, result[glRefConfig.arbTextureCompression], extension);
+	}
+
 	// GL_EXT_framebuffer_multisample
 	extension = "GL_EXT_framebuffer_multisample";
 	glRefConfig.framebufferMultisample = qfalse;
@@ -593,60 +660,14 @@ void GLimp_InitExtraExtensions()
 		ri.Printf(PRINT_ALL, result[2], extension);
 	}
 
-	// GL_EXT_texture_sRGB
-	extension = "GL_EXT_texture_sRGB";
-	glRefConfig.textureSrgb = qfalse;
-	if (GLimp_HaveExtension(extension))
-	{
-		if (r_srgb->integer)
-			glRefConfig.textureSrgb = qtrue;
-
-		ri.Printf(PRINT_ALL, result[glRefConfig.textureSrgb], extension);
-	}
-	else
-	{
-		ri.Printf(PRINT_ALL, result[2], extension);
-	}
-
-	// GL_EXT_framebuffer_sRGB
-	extension = "GL_EXT_framebuffer_sRGB";
-	glRefConfig.framebufferSrgb = qfalse;
-	if (GLimp_HaveExtension(extension))
-	{
-		if (r_srgb->integer)
-			glRefConfig.framebufferSrgb = qtrue;
-
-		ri.Printf(PRINT_ALL, result[glRefConfig.framebufferSrgb], extension);
-	}
-	else
-	{
-		ri.Printf(PRINT_ALL, result[2], extension);
-	}
-
-	// GL_EXT_texture_sRGB_decode
-	extension = "GL_EXT_texture_sRGB_decode";
-	glRefConfig.textureSrgbDecode = qfalse;
-	if (GLimp_HaveExtension(extension))
-	{
-		if (r_srgb->integer)
-			glRefConfig.textureSrgbDecode = qtrue;
-
-		ri.Printf(PRINT_ALL, result[glRefConfig.textureSrgbDecode], extension);
-	}
-	else
-	{
-		ri.Printf(PRINT_ALL, result[2], extension);
-	}
-
-
 	glRefConfig.textureCompression = TCR_NONE;
 
-	// GL_EXT_texture_compression_latc
-	extension = "GL_EXT_texture_compression_latc";
+	// GL_ARB_texture_compression_rgtc
+	extension = "GL_ARB_texture_compression_rgtc";
 	if (GLimp_HaveExtension(extension))
 	{
-		if (r_ext_compressed_textures->integer)
-			glRefConfig.textureCompression |= TCR_LATC;
+		if (r_ext_compressed_textures->integer && glRefConfig.arbTextureCompression)
+			glRefConfig.textureCompression |= TCR_RGTC;
 
 		ri.Printf(PRINT_ALL, result[r_ext_compressed_textures->integer ? 1 : 0], extension);
 	}
@@ -654,6 +675,8 @@ void GLimp_InitExtraExtensions()
 	{
 		ri.Printf(PRINT_ALL, result[2], extension);
 	}
+
+	glRefConfig.swizzleNormalmap = r_ext_compressed_textures->integer && !(glRefConfig.textureCompression & TCR_RGTC);
 
 	// GL_ARB_texture_compression_bptc
 	extension = "GL_ARB_texture_compression_bptc";
@@ -713,13 +736,124 @@ void GLimp_InitExtraExtensions()
 
 	// GL_ARB_vertex_type_2_10_10_10_rev
 	extension = "GL_ARB_vertex_type_2_10_10_10_rev";
-	glRefConfig.packedNormalDataType = GL_UNSIGNED_BYTE;
+	glRefConfig.packedNormalDataType = GL_BYTE;
 	if( GLimp_HaveExtension( extension ) )
 	{
 		if (r_arb_vertex_type_2_10_10_10_rev->integer)
-			glRefConfig.packedNormalDataType = GL_UNSIGNED_INT_2_10_10_10_REV;
+			glRefConfig.packedNormalDataType = GL_INT_2_10_10_10_REV;
 
 		ri.Printf(PRINT_ALL, result[r_arb_vertex_type_2_10_10_10_rev->integer ? 1 : 0], extension);
+	}
+	else
+	{
+		ri.Printf(PRINT_ALL, result[2], extension);
+	}
+
+	// use float lightmaps?
+	glRefConfig.floatLightmap = (glRefConfig.textureFloat && glRefConfig.halfFloatPixel && r_floatLightmap->integer && r_hdr->integer);
+
+	// GL_ARB_vertex_array_object
+	extension = "GL_ARB_vertex_array_object";
+	glRefConfig.vertexArrayObject = qfalse;
+	if( GLimp_HaveExtension( extension ) )
+	{
+		qglBindVertexArrayARB = (void *) SDL_GL_GetProcAddress("glBindVertexArray");
+		qglDeleteVertexArraysARB = (void *) SDL_GL_GetProcAddress("glDeleteVertexArrays");
+		qglGenVertexArraysARB = (void *) SDL_GL_GetProcAddress("glGenVertexArrays");
+		qglIsVertexArrayARB = (void *) SDL_GL_GetProcAddress("glIsVertexArray");
+
+		if (r_arb_vertex_array_object->integer)
+			glRefConfig.vertexArrayObject = qtrue;
+
+		ri.Printf(PRINT_ALL, result[glRefConfig.vertexArrayObject ? 1 : 0], extension);
+	}
+	else
+	{
+		ri.Printf(PRINT_ALL, result[2], extension);
+	}
+
+	// GL_ARB_half_float_vertex
+	extension = "GL_ARB_half_float_vertex";
+	glRefConfig.packedTexcoordDataType = GL_FLOAT;
+	glRefConfig.packedTexcoordDataSize = sizeof(float) * 2;
+	glRefConfig.packedColorDataType    = GL_FLOAT;
+	glRefConfig.packedColorDataSize    = sizeof(float) * 4;
+	if( GLimp_HaveExtension( extension ) )
+	{
+		if (r_arb_half_float_vertex->integer)
+		{
+			glRefConfig.packedTexcoordDataType = GL_HALF_FLOAT;
+			glRefConfig.packedTexcoordDataSize = sizeof(uint16_t) * 2;
+			glRefConfig.packedColorDataType    = GL_HALF_FLOAT;
+			glRefConfig.packedColorDataSize    = sizeof(uint16_t) * 4;
+		}
+
+		ri.Printf(PRINT_ALL, result[r_arb_half_float_vertex->integer ? 1 : 0], extension);
+	}
+	else
+	{
+		ri.Printf(PRINT_ALL, result[2], extension);
+	}
+
+	// GL_EXT_direct_state_access
+	extension = "GL_EXT_direct_state_access";
+
+	qglBindMultiTexture = GLDSA_BindMultiTexture;
+	qglTextureParameterf = GLDSA_TextureParameterf;
+	qglTextureParameteri = GLDSA_TextureParameteri;
+	qglTextureImage2D = GLDSA_TextureImage2D;
+	qglTextureSubImage2D = GLDSA_TextureSubImage2D;
+	qglCopyTextureImage2D = GLDSA_CopyTextureImage2D;
+	qglCompressedTextureImage2D = GLDSA_CompressedTextureImage2D;
+	qglCompressedTextureSubImage2D = GLDSA_CompressedTextureSubImage2D;
+	qglGenerateTextureMipmap = GLDSA_GenerateTextureMipmap;
+
+	qglProgramUniform1i = GLDSA_ProgramUniform1i;
+	qglProgramUniform1f = GLDSA_ProgramUniform1f;
+	qglProgramUniform2f = GLDSA_ProgramUniform2f;
+	qglProgramUniform3f = GLDSA_ProgramUniform3f;
+	qglProgramUniform4f = GLDSA_ProgramUniform4f;
+	qglProgramUniform1fv = GLDSA_ProgramUniform1fv;
+	qglProgramUniformMatrix4fv = GLDSA_ProgramUniformMatrix4fv;
+
+	qglNamedRenderbufferStorage = GLDSA_NamedRenderbufferStorage;
+	qglNamedRenderbufferStorageMultisample = GLDSA_NamedRenderbufferStorageMultisample;
+	qglCheckNamedFramebufferStatus = GLDSA_CheckNamedFramebufferStatus;
+	qglNamedFramebufferTexture2D = GLDSA_NamedFramebufferTexture2D;
+	qglNamedFramebufferRenderbuffer = GLDSA_NamedFramebufferRenderbuffer;
+
+	glRefConfig.directStateAccess = qfalse;
+	if (GLimp_HaveExtension(extension))
+	{
+		if (r_ext_direct_state_access->integer)
+		{
+			glRefConfig.directStateAccess = qtrue;
+			qglBindMultiTexture = (void *)SDL_GL_GetProcAddress("glBindMultiTextureEXT");
+			qglTextureParameterf = (void *)SDL_GL_GetProcAddress("glTextureParameterfEXT");
+			qglTextureParameteri = (void *)SDL_GL_GetProcAddress("glTextureParameteriEXT");
+			qglTextureImage2D = (void *)SDL_GL_GetProcAddress("glTextureImage2DEXT");
+			qglTextureSubImage2D = (void *)SDL_GL_GetProcAddress("glTextureSubImage2DEXT");
+			qglCopyTextureImage2D = (void *)SDL_GL_GetProcAddress("glCopyTextureImage2DEXT");
+			qglCompressedTextureImage2D = (void *)SDL_GL_GetProcAddress("glCompressedTextureImage2DEXT");
+			qglCompressedTextureSubImage2D = (void *)SDL_GL_GetProcAddress("glCompressedTextureSubImage2DEXT");
+			qglGenerateTextureMipmap = (void *)SDL_GL_GetProcAddress("glGenerateTextureMipmapEXT");
+
+			qglProgramUniform1i = (void *)SDL_GL_GetProcAddress("glProgramUniform1iEXT");
+			qglProgramUniform1f = (void *)SDL_GL_GetProcAddress("glProgramUniform1fEXT");
+			qglProgramUniform2f = (void *)SDL_GL_GetProcAddress("glProgramUniform2fEXT");
+			qglProgramUniform3f = (void *)SDL_GL_GetProcAddress("glProgramUniform3fEXT");
+			qglProgramUniform4f = (void *)SDL_GL_GetProcAddress("glProgramUniform4fEXT");
+			qglProgramUniform1fv = (void *)SDL_GL_GetProcAddress("glProgramUniform1fvEXT");
+			qglProgramUniformMatrix4fv = (void *)SDL_GL_GetProcAddress("glProgramUniformMatrix4fvEXT");
+
+			qglNamedRenderbufferStorage = (void *)SDL_GL_GetProcAddress("glNamedRenderbufferStorageEXT");
+			qglNamedRenderbufferStorageMultisample = (void *)SDL_GL_GetProcAddress("glNamedRenderbufferStorageMultisampleEXT");
+			qglCheckNamedFramebufferStatus = (void *)SDL_GL_GetProcAddress("glCheckNamedFramebufferStatusEXT");
+			qglNamedFramebufferTexture2D = (void *)SDL_GL_GetProcAddress("glNamedFramebufferTexture2DEXT");
+			qglNamedFramebufferRenderbuffer = (void *)SDL_GL_GetProcAddress("glNamedFramebufferRenderbufferEXT");
+		}
+
+		ri.Printf(PRINT_ALL, result[glRefConfig.directStateAccess ? 1 : 0], extension);
 	}
 	else
 	{

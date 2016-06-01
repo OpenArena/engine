@@ -236,6 +236,10 @@ static void S_PaintChannelFrom16_altivec( channel_t *ch, const sfx_t *sc, int co
 	short					*samples;
 	float					ooff, fdata[2], fdiv, fleftvol, frightvol;
 
+	if (sc->soundChannels <= 0) {
+		return;
+	}
+
 	samp = &paintbuffer[ bufferOffset ];
 
 	if (ch->doppler) {
@@ -421,6 +425,10 @@ static void S_PaintChannelFrom16_scalar( channel_t *ch, const sfx_t *sc, int cou
 	sndBuffer				*chunk;
 	short					*samples;
 	float					ooff, fdata[2], fdiv, fleftvol, frightvol;
+
+	if (sc->soundChannels <= 0) {
+		return;
+	}
 
 	samp = &paintbuffer[ bufferOffset ];
 
@@ -710,6 +718,10 @@ void S_PaintChannels( int endtime ) {
 
 			ltime = s_paintedtime;
 			sc = ch->thesfx;
+
+			if (sc->soundData==NULL || sc->soundLength==0) {
+				continue;
+			}
 
 			sampleOffset = ltime - ch->startSample;
 			count = end - ltime;
