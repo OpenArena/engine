@@ -275,6 +275,32 @@ void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, flo
 }
 
 /*
+==================
+RE_VfovToHfov
+
+Convert from vertical FOV to horizontal FOV when playing on a specific aspect
+ratio. FOV input and output are in degrees.
+==================
+*/
+static float RE_VfovToHfov( float vfov, float aspect )
+{
+	return 2.0 * DEGREES( atan( tan( RADIANS( vfov ) / 2.0 ) * aspect ) );
+}
+
+/*
+==================
+RE_VfovToHfov
+
+Convert from horizontal FOV to vertical FOV when playing on a specific aspect
+ratio. FOV input and output are in degrees.
+==================
+*/
+static float RE_HfovToVfov( float hfov, float aspect )
+{
+	return 2.0 * DEGREES( atan( tan( RADIANS( hfov ) / 2.0 ) / aspect ) );
+}
+
+/*
 @@@@@@@@@@@@@@@@@@@@@
 RE_RenderScene
 
@@ -387,38 +413,14 @@ void RE_RenderScene( const refdef_t *fd ) {
 	parms.viewportHeight = tr.refdef.height;
 	parms.isPortal = qfalse;
 
-	parms.fovX = tr.refdef.fov_x;
-	parms.fovY = tr.refdef.fov_y;
-	
-	// leilei - widescreen
-	// recalculate fov according to widescreen parameters
-	if (!( fd->rdflags & RDF_NOWORLDMODEL ) ) // don't affect interface refdefs
-	{
-		float zoomfov = tr.refdef.fov_x / 90;	// figure out our zoom or changed fov magnitiude from cg_fov and cg_zoomfov
-		int thisisit;
+	// In Vert- FOV the horizontal FOV is unchanged, so we use it to
+	// calculate the vertical FOV that would be used if playing on 4:3 to
+	// get the Hor+ vertical FOV.
+	parms.fovY = RE_HfovToVfov( tr.refdef.fov_x, 4.0 / 3.0 );
 
-		// find aspect to immediately match our vidwidth for perfect match with resized screens...
-		float erspact = tr.refdef.width / tr.refdef.height;
-		float aspact = glConfig.vidWidth / glConfig.vidHeight;
-		if (erspact == aspact) thisisit = 1;
-
-	
-		// try not to recalculate fov of ui and hud elements
-		//if (((tr.refdef.fov_x /  tr.refdef.fov_y) > 1.3) && (tr.refdef.width > 320) && (tr.refdef.height > 240))
-		//if (((tr.refdef.fov_x /  tr.refdef.fov_y) > 1.3) && (tr.refdef.width > (320 * refdefscalex)) && (tr.refdef.height > (240 * refdefscaley)))
-		if (((tr.refdef.fov_x /  tr.refdef.fov_y) > 1.3) && (thisisit))
-
-			{
-			// undo vert-
-			parms.fovY = parms.fovY * (73.739792 / tr.refdef.fov_y) * zoomfov;
-			
-			// recalculate the fov
-			parms.fovX = (atan (glConfig.vidWidth / (glConfig.vidHeight / tan ((parms.fovY * M_PI) / 360.0f))) * 360.0f) / M_PI;
-			parms.fovY = (atan (glConfig.vidHeight / (glConfig.vidWidth / tan ((parms.fovX * M_PI) / 360.0f))) * 360.0f) / M_PI;
-			}
-	}
-
-	// leilei - end
+	// Then we use the Hor+ vertical FOV to calculate our new expanded
+	// horizontal FOV
+	parms.fovX = RE_VfovToHfov( parms.fovY, (float)tr.refdef.width / tr.refdef.height  );
 
 	parms.stereoFrame = tr.refdef.stereoFrame;
 

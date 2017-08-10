@@ -196,6 +196,12 @@ typedef int		sfxHandle_t;
 typedef int		fileHandle_t;
 typedef int		clipHandle_t;
 
+// convert angle from radians to degrees
+#define DEGREES( a ) ((a) * 180.0 / M_PI)
+ 
+// convert angle from degrees to radians
+#define RADIANS( a ) ((a) / 180.0 * M_PI)
+
 #define PAD(base, alignment)	(((base)+(alignment)-1) & ~((alignment)-1))
 #define PADLEN(base, alignment)	(PAD((base), (alignment)) - (base))
 
