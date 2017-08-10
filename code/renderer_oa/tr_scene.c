@@ -413,14 +413,21 @@ void RE_RenderScene( const refdef_t *fd ) {
 	parms.viewportHeight = tr.refdef.height;
 	parms.isPortal = qfalse;
 
-	// In Vert- FOV the horizontal FOV is unchanged, so we use it to
-	// calculate the vertical FOV that would be used if playing on 4:3 to
-	// get the Hor+ vertical FOV.
-	parms.fovY = RE_HfovToVfov( tr.refdef.fov_x, 4.0 / 3.0 );
+	if (fd->rdflags & RDF_NOWORLDMODEL) { // in menu
+		// Here we don't adjust the FOV
+		parms.fovX = tr.refdef.fov_x;
+		parms.fovY = tr.refdef.fov_y;
+	} else {
+		// In Vert- FOV the horizontal FOV is unchanged, so we use it to
+		// calculate the vertical FOV that would be used if playing on
+		// 4:3 to get the Hor+ vertical FOV
+		parms.fovY = RE_HfovToVfov( tr.refdef.fov_x, 4.0 / 3.0 );
 
-	// Then we use the Hor+ vertical FOV to calculate our new expanded
-	// horizontal FOV
-	parms.fovX = RE_VfovToHfov( parms.fovY, (float)tr.refdef.width / tr.refdef.height  );
+		// Then we use the Hor+ vertical FOV to calculate our new
+		// expanded horizontal FOV
+		parms.fovX = RE_VfovToHfov( parms.fovY, (float)tr.refdef.width /
+				tr.refdef.height );
+	}
 
 	parms.stereoFrame = tr.refdef.stereoFrame;
 
