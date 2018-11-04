@@ -861,6 +861,222 @@ void SV_ShutdownGameProgs( void ) {
 
 /*
 ==================
+SV_ReadEntityOverride
+Nicked from fnquake3
+==================
+*/
+static qboolean SV_ReadEntityOverride( void ) {
+	char		rfname[MAX_OSPATH];
+	qboolean	entor = qfalse;
+
+	if ( !sv_entList_load->integer ) return qfalse;
+
+	// load ent file if it exists
+	//Q_strncpyz( rfname, va("maps/%s.ent", (sv.do_ent_or && sv.ent_or) ? sv.ent_or : sv_mapname->string), sizeof(rfname) );
+	//Com_sprintf( rfname, sizeof(rfname), "maps/%s.ent", (sv.do_ent_or && sv.ent_or) ? sv.ent_or : sv_mapname->string );
+	Q_strncpyz( rfname, va("maps/%s.ent", sv_mapname->string), sizeof(rfname) );
+
+	if ( FS_FileExists(rfname) ) {
+		union {
+			char	*c;	//c[65536];
+			void	*v;
+		} f;
+		long		len;
+		char		*text;
+
+		//Com_Printf( "Attempting to read override file (%s)...\n", rfname );
+		len = FS_ReadFile2( rfname, &f.v );
+		//Com_Printf( "Reading entity override file (%s).\n", rfname );
+		if ( f.c ) {
+			text = f.c;
+			//Com_Printf( "Entity override file length: %ld\n ", len );
+			////Com_Printf( "\nEntity override file string:\n " S_COLOR_CYAN "%s\n\n" S_COLOR_WHITE, text );
+
+			// start the entity parsing at the beginning
+			//Com_Printf( "Attempting to override entity string from file (%s)...\n", rfname );
+			CMod_OverrideEntityString( text, len );
+			sv.entityParsePoint = CM_EntityString();
+			//Com_Printf( "Overrode entity string from file (%s).\n", rfname );
+			
+			entor = qtrue;
+		} else {
+			//Com_Printf( "Entity override file is empty (%s).\n", rfname );
+		}
+		FS_FreeFile( f.v );
+	} else {
+		//Com_Printf( "No entity override file (%s) found for current map.\n", rfname );
+	}
+	return entor;
+}
+
+/*
+==================
+SV_WriteEntityOverride
+Nicked from fnquake3
+==================
+*/
+static void SV_WriteEntityOverride( const qboolean entor ) {
+	fileHandle_t	fw;
+	char			wfname[MAX_OSPATH];
+
+	// start the entity parsing at the beginning
+	sv.entityParsePoint = CM_EntityString();
+
+	// dump ent file if dumping is enabled and there's no override loaded
+	if ( entor || !sv_entList_dump->integer ) return;
+
+	//Q_strncpyz( wfname, va("%s/%s.ent", (sv_entList_dump->integer > 1) ? "maps" : "ents", sv_mapname->string), sizeof(wfname) );
+	Com_sprintf( wfname, sizeof(wfname), "%s/%s.ent", (sv_entList_dump->integer > 1) ? "maps" : "ents", sv_mapname->string );
+
+	if ( !FS_FileExists(wfname) ) {
+		//Com_Printf( "Attempting to write entity override file: %s...\n", wfname );
+		fw = FS_FOpenFileWrite( wfname, qfalse );
+
+		if ( fw ) {
+			FS_Write( sv.entityParsePoint, strlen(sv.entityParsePoint), fw );
+			//Com_Printf( "Saved entity override file: %s.\n", wfname );
+			FS_FCloseFile( fw );
+		}
+	}
+}
+
+/*
+==================
+SV_InitEntityOverride
+Nicked from fnquake3
+==================
+*/
+static void SV_InitEntityOverride( void ) {
+	SV_WriteEntityOverride( SV_ReadEntityOverride() );
+}
+
+/*
+==================
+Below code nicked from fnquake3
+==================
+*/
+//map name
+#if 0
+int		numSpawnVars;
+char	*spawnVars[64][2];
+
+char *SV_AddSpawnVarToken( const char *string ) {
+	int		l;
+	char	*dest;
+
+	l = strlen( string );
+	if ( level.numSpawnVarChars + l + 1 > MAX_SPAWN_VARS_CHARS ) {
+		G_Error( "G_AddSpawnVarToken: MAX_SPAWN_VARS_CHARS" );
+	}
+
+	dest = level.spawnVarChars + level.numSpawnVarChars;
+	memcpy( dest, string, l+1 );
+
+	level.numSpawnVarChars += l + 1;
+
+	return dest;
+}
+
+qboolean SV_ParseSpawnVars( char **out_name[MAX_TOKEN_CHARS], char **out_token[MAX_TOKEN_CHARS] ) {
+	char		*s;
+	char		keyname[MAX_TOKEN_CHARS];
+	char		com_token[MAX_TOKEN_CHARS];
+
+	numSpawnVars = 0;
+	numSpawnVarChars = 0;
+
+	// parse the opening brace
+	s = sv.entityParsePoint;
+	com_token = COM_Parse( &s );
+	if ( !com_token ) {
+		// end of spawn string
+		return qfalse;
+	}
+	if ( com_token[0] != '{' ) {
+		G_Error( "SV_ParseSpawnVars: found %s when expecting {", com_token );
+	}
+
+	// retrieve worldspawn token
+	while ( 1 ) {	
+		// parse key
+		keyname = COM_Parse( &keyname );
+		if ( !keyname ) {
+			G_Error( "SV_ParseSpawnVars: EOF without closing brace" );
+		}
+
+		if ( keyname[0] == '}' ) {
+			break;
+		}
+		
+		// parse value
+		com_token = COM_Parse( &com_token );
+		if ( !com_token ) {
+			Com_Printf( "SV_ParseSpawnVars: EOF without closing brace" );
+		}
+		if ( com_token[0] == '}' ) {
+			Com_Printf( "SV_ParseSpawnVars: closing brace without data\n" );
+		}
+		spawnVars[numSpawnVars][0] = G_AddSpawnVarToken( keyname );
+		spawnVars[numSpawnVars][1] = G_AddSpawnVarToken( com_token );
+		numSpawnVars++;
+
+		*out_name = keyname;
+		*out_token = com_token;
+	}
+
+	return qtrue;
+}
+
+qboolean SV_SpawnString( char *in, const char *key, const char *defaultString, char **out ) {
+	int		i;
+
+	if ( !in ) {
+		*out = (char *)defaultString;
+	}
+
+	for ( i = 0 ; i < numSpawnVars ; i++ ) {
+		if ( !Q_stricmp(key, spawnVars[i][0]) ) {
+			*out = spawnVars[i][1];
+			return qtrue;
+		}
+	}
+
+	*out = (char *)defaultString;
+	return qfalse;
+}
+
+void SV_PrintLoadingMapName( void ) {
+	char	*s, *mapname;
+	//char	*author1, *author2;
+
+	s = sv.entityParsePoint;
+
+	if ( !SV_ParseSpawnVars() ) {
+		return;
+	}
+
+	SV_SpawnString( s, "classname", "", &s );
+	if ( Q_stricmp(s, "worldspawn") ) {
+		return;
+	}
+
+	SV_SpawnString( s, "message", "", &s );
+	mapname = s;
+	/*
+	SV_SpawnString( s, "author", "", &s );
+	author1 = s;
+	SV_SpawnString( s, "author2", "", &s );
+	author2 = s;
+	*/
+
+	Com_Printf( "-------------------------------\n" );
+	Com_Printf( "%s", mapname );
+}
+#endif
+//-map name
+
+/*
+==================
 SV_InitGameVM
 
 Called for both a full init and a restart
@@ -869,6 +1085,7 @@ Called for both a full init and a restart
 static void SV_InitGameVM( qboolean restart ) {
 	int		i;
 
+	SV_InitEntityOverride();
 	// start the entity parsing at the beginning
 	sv.entityParsePoint = CM_EntityString();
 
