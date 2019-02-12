@@ -4,4 +4,4 @@
 CC=clang
 CFLAGS+=-fsanitize=address
 CFLAGS+=-g
-CFLAGS+=-fsanitize-recover=address
+CFLAGS+=-fsanitize-blacklist=asan_ignore.txt
