@@ -746,7 +746,11 @@ static void IN_InitJoystick( void )
 	// Print list and build cvar to allow ui to select joystick.
 	for (i = 0; i < total; i++)
 	{
+#if SDL_MAJOR_VERSION == 2
+		Q_strcat(buf, sizeof(buf), SDL_JoystickNameForIndex(i));
+#else
 		Q_strcat(buf, sizeof(buf), SDL_JoystickName(i));
+#endif
 		Q_strcat(buf, sizeof(buf), "\n");
 	}
 
@@ -772,7 +776,11 @@ static void IN_InitJoystick( void )
 	}
 
 	Com_DPrintf( "Joystick %d opened\n", in_joystickNo->integer );
+#if SDL_MAJOR_VERSION == 2
+	Com_DPrintf( "Name:       %s\n", SDL_JoystickNameForIndex(in_joystickNo->integer) );
+#else
 	Com_DPrintf( "Name:       %s\n", SDL_JoystickName(in_joystickNo->integer) );
+#endif
 	Com_DPrintf( "Axes:       %d\n", SDL_JoystickNumAxes(stick) );
 	Com_DPrintf( "Hats:       %d\n", SDL_JoystickNumHats(stick) );
 	Com_DPrintf( "Buttons:    %d\n", SDL_JoystickNumButtons(stick) );
