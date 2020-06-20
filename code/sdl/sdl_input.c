@@ -658,11 +658,20 @@ static void IN_DeactivateMouse( void )
 	{
 		IN_GobbleMotionEvents( );
 
+#if SDL_MAJOR_VERSION == 2
+		SDL_SetWindowGrab( SDL_window, 0 );
+		SDL_SetRelativeMouseMode( SDL_FALSE );
+
+		// Don't warp the mouse unless the cursor is within the window
+		if( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_MOUSE_FOCUS )
+			SDL_WarpMouseInWindow( SDL_window, cls.glconfig.vidWidth / 2, cls.glconfig.vidHeight / 2 );
+#else
 		SDL_WM_GrabInput( SDL_GRAB_OFF );
 
 		// Don't warp the mouse unless the cursor is within the window
 		if( SDL_GetAppState( ) & SDL_APPMOUSEFOCUS )
 			SDL_WarpMouse( cls.glconfig.vidWidth / 2, cls.glconfig.vidHeight / 2 );
+#endif
 
 		mouseActive = qfalse;
 	}
