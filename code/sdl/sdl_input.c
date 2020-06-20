@@ -77,7 +77,11 @@ static int vidRestartTime = 0;
 IN_PrintKey
 ===============
 */
+#if SDL_MAJOR_VERSION == 2
+static void IN_PrintKey( const SDL_Keysym *keysym, keyNum_t key, qboolean down )
+#else
 static void IN_PrintKey( const SDL_keysym *keysym, keyNum_t key, qboolean down )
+#endif
 {
 	if( down )
 		Com_Printf( "+ " );
@@ -93,15 +97,21 @@ static void IN_PrintKey( const SDL_keysym *keysym, keyNum_t key, qboolean down )
 	if( keysym->mod & KMOD_RCTRL )    Com_Printf( " KMOD_RCTRL" );
 	if( keysym->mod & KMOD_LALT )     Com_Printf( " KMOD_LALT" );
 	if( keysym->mod & KMOD_RALT )     Com_Printf( " KMOD_RALT" );
+#if SDL_MAJOR_VERSION == 2
+	if( keysym->mod & KMOD_LGUI )    Com_Printf( " KMOD_LGUI" );
+	if( keysym->mod & KMOD_RGUI )    Com_Printf( " KMOD_RGUI" );
+#else
 	if( keysym->mod & KMOD_LMETA )    Com_Printf( " KMOD_LMETA" );
 	if( keysym->mod & KMOD_RMETA )    Com_Printf( " KMOD_RMETA" );
+#endif
 	if( keysym->mod & KMOD_NUM )      Com_Printf( " KMOD_NUM" );
 	if( keysym->mod & KMOD_CAPS )     Com_Printf( " KMOD_CAPS" );
 	if( keysym->mod & KMOD_MODE )     Com_Printf( " KMOD_MODE" );
 	if( keysym->mod & KMOD_RESERVED ) Com_Printf( " KMOD_RESERVED" );
 
-	Com_Printf( " Q:0x%02x(%s)", key, Key_KeynumToString( key ) );
+	Com_Printf( " Q:0x%02x(%s)\n", key, Key_KeynumToString( key ) );
 
+#if SDL_MAJOR_VERSION != 2
 	if( keysym->unicode )
 	{
 		Com_Printf( " U:0x%02x", keysym->unicode );
@@ -109,6 +119,7 @@ static void IN_PrintKey( const SDL_keysym *keysym, keyNum_t key, qboolean down )
 		if( keysym->unicode > ' ' && keysym->unicode < '~' )
 			Com_Printf( "(%c)", (char)keysym->unicode );
 	}
+#endif
 
 	Com_Printf( "\n" );
 }

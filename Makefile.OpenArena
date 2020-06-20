@@ -34,7 +34,7 @@ BUILD_RENDERER_OPENGL2=0
 USE_RENDERER_DLOPEN=0
 
 # Choose version 1 or 2
-SDL_VERSION=1
+SDL_VERSION=2
 
 ifndef USE_CONSOLE_WINDOW
 USE_CONSOLE_WINDOW=1			# use an early console window (WIN32 only)
