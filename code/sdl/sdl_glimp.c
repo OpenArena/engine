@@ -47,7 +47,9 @@ typedef void *QGLContext;
 #define GLimp_SetCurrentContext(ctx)
 #endif
 
+#if SDL_MAJOR_VERSION != 2
 static QGLContext opengl_context;
+#endif
 
 int tvMode;	// leilei - tvmode
 int tvWidth;
@@ -69,8 +71,13 @@ typedef enum
 	RSERR_UNKNOWN
 } rserr_t;
 
+#if SDL_MAJOR_VERSION == 2
+SDL_Window *SDL_window = NULL;
+SDL_GLContext SDL_glContext = NULL;
+#else
 static SDL_Surface *screen = NULL;
 static const SDL_VideoInfo *videoInfo = NULL;
+#endif
 
 cvar_t *r_allowSoftwareGL; // Don't abort out if a hardware visual can't be obtained
 cvar_t *r_tvMode; // leilei - tv mode - force 480i rendering, which is then stretched and interlaced
@@ -100,7 +107,9 @@ void GLimp_Shutdown( void )
 	ri.IN_Shutdown();
 
 	SDL_QuitSubSystem( SDL_INIT_VIDEO );
+#if SDL_MAJOR_VERSION != 2
 	screen = NULL;
+#endif
 }
 
 /*
@@ -112,7 +121,11 @@ Minimize the game so that user is back at the desktop
 */
 void GLimp_Minimize(void)
 {
+#if SDL_MAJOR_VERSION == 2
+	SDL_MinimizeWindow( SDL_window );
+#else
 	SDL_WM_IconifyWindow();
+#endif
 }
 
 
@@ -133,8 +146,13 @@ GLimp_CompareModes
 static int GLimp_CompareModes( const void *a, const void *b )
 {
 	const float ASPECT_EPSILON = 0.001f;
+#if SDL_MAJOR_VERSION == 2
+	SDL_Rect *modeA = (SDL_Rect *)a;
+	SDL_Rect *modeB = (SDL_Rect *)b;
+#else
 	SDL_Rect *modeA = *(SDL_Rect **)a;
 	SDL_Rect *modeB = *(SDL_Rect **)b;
+#endif
 	float aspectA = (float)modeA->w / (float)modeA->h;
 	float aspectB = (float)modeB->w / (float)modeB->h;
 	int areaA = modeA->w * modeA->h;
@@ -160,10 +178,59 @@ GLimp_DetectAvailableModes
 static void GLimp_DetectAvailableModes(void)
 {
 	char buf[ MAX_STRING_CHARS ] = { 0 };
+#if SDL_MAJOR_VERSION == 2
+	SDL_Rect modes[ 128 ];
+#else
 	SDL_Rect **modes;
-	int numModes;
+#endif
+	int numModes = 0;
 	int i;
 
+#if SDL_MAJOR_VERSION == 2
+
+	int display = SDL_GetWindowDisplayIndex( SDL_window );
+	SDL_DisplayMode windowMode;
+
+	if( SDL_GetWindowDisplayMode( SDL_window, &windowMode ) < 0 )
+	{
+		ri.Printf( PRINT_WARNING, "Couldn't get window display mode, no resolutions detected\n" );
+		return;
+	}
+
+	for( i = 0; i < SDL_GetNumDisplayModes( display ); i++ )
+	{
+		SDL_DisplayMode mode;
+
+		if( SDL_GetDisplayMode( display, i, &mode ) < 0 )
+			continue;
+
+		if( !mode.w || !mode.h )
+		{
+			ri.Printf( PRINT_ALL, "Display supports any resolution\n" );
+			return;
+		}
+
+		if( windowMode.format != mode.format )
+			continue;
+
+		modes[ numModes ].w = mode.w;
+		modes[ numModes ].h = mode.h;
+		numModes++;
+	}
+
+	if( numModes > 1 )
+		qsort( modes, numModes, sizeof( SDL_Rect ), GLimp_CompareModes );
+
+	for( i = 0; i < numModes; i++ )
+	{
+		const char *newModeString = va( "%ux%u ", modes[ i ].w, modes[ i ].h );
+
+		if( strlen( newModeString ) < (int)sizeof( buf ) - strlen( buf ) )
+			Q_strcat( buf, sizeof( buf ), newModeString );
+		else
+			ri.Printf( PRINT_WARNING, "Skipping mode %ux%x, buffer too small\n", modes[i].w, modes[i].h );
+	}
+#else
 	modes = SDL_ListModes( videoInfo->vfmt, SDL_OPENGL | SDL_FULLSCREEN );
 
 	if( !modes )
@@ -192,6 +259,7 @@ static void GLimp_DetectAvailableModes(void)
 		else
 			ri.Printf( PRINT_WARNING, "Skipping mode %ux%x, buffer too small\n", modes[i]->w, modes[i]->h );
 	}
+#endif
 
 	if( *buf )
 	{
@@ -215,14 +283,45 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 	int accumbits;	// leilei - motionblur
 	int samples;
 	int i = 0;
+	SDL_Surface *icon = NULL;
+#if SDL_MAJOR_VERSION == 2
+	Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
+	int display = 0;
+	SDL_DisplayMode desktopMode;
+	int x = SDL_WINDOWPOS_UNDEFINED, y = SDL_WINDOWPOS_UNDEFINED;
+#else
 	SDL_Surface *vidscreen = NULL;
 	Uint32 flags = SDL_OPENGL;
+#endif
 
 	ri.Printf( PRINT_ALL, "Initializing OpenGL display\n");
 
 	if ( r_allowResize->integer )
+#if SDL_MAJOR_VERSION == 2
+		flags |= SDL_WINDOW_RESIZABLE;
+#else
 		flags |= SDL_RESIZABLE;
+#endif
 
+#if SDL_MAJOR_VERSION == 2
+	// If a window exists, note its display index
+	if( SDL_window != NULL )
+		display = SDL_GetWindowDisplayIndex( SDL_window );
+
+	if( SDL_GetDesktopDisplayMode( display, &desktopMode ) == 0 )
+	{
+		displayAspect = (float)desktopMode.w / (float)desktopMode.h;
+
+		ri.Printf( PRINT_ALL, "Display aspect: %.3f\n", displayAspect );
+	}
+	else
+	{
+		Com_Memset( &desktopMode, 0, sizeof( SDL_DisplayMode ) );
+
+		ri.Printf( PRINT_ALL,
+				"Cannot determine display aspect, assuming 1.333\n" );
+	}
+#else
 	if( videoInfo == NULL )
 	{
 		static SDL_VideoInfo sVideoInfo;
@@ -252,17 +351,26 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 					"Cannot estimate display aspect, assuming 1.333\n" );
 		}
 	}
+#endif
 
 	ri.Printf (PRINT_ALL, "...setting mode %d:", mode );
 
 	if (mode == -2)
 	{
 		// use desktop video resolution
-		if( videoInfo->current_h > 0 )
+#if SDL_MAJOR_VERSION == 2
+		if ( desktopMode.h > 0 )
+		{
+			glConfig.vidWidth = desktopMode.w;
+			glConfig.vidHeight = desktopMode.h;
+		}
+#else
+		if ( videoInfo->current_h > 0 )
 		{
 			glConfig.vidWidth = videoInfo->current_w;
 			glConfig.vidHeight = videoInfo->current_h;
 		}
+#endif
 		else
 		{
 			glConfig.vidWidth = 640;
@@ -280,15 +388,40 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 	}
 	ri.Printf( PRINT_ALL, " %d %d\n", glConfig.vidWidth, glConfig.vidHeight);
 
+#if SDL_MAJOR_VERSION == 2
+	// Destroy existing state if it exists
+	if( SDL_glContext != NULL )
+	{
+		SDL_GL_DeleteContext( SDL_glContext );
+		SDL_glContext = NULL;
+	}
+
+	if( SDL_window != NULL )
+	{
+		SDL_GetWindowPosition( SDL_window, &x, &y );
+		ri.Printf( PRINT_DEVELOPER, "Existing window at %dx%d before being destroyed\n", x, y );
+		SDL_DestroyWindow( SDL_window );
+		SDL_window = NULL;
+	}
+#endif
+
 	if (fullscreen)
 	{
+#if SDL_MAJOR_VERSION == 2
+		flags |= SDL_WINDOW_FULLSCREEN;
+#else
 		flags |= SDL_FULLSCREEN;
+#endif
 		glConfig.isFullscreen = qtrue;
 	}
 	else
 	{
 		if (noborder)
+#if SDL_MAJOR_VERSION == 2
+			flags |= SDL_WINDOW_BORDERLESS;
+#else
 			flags |= SDL_NOFRAME;
+#endif
 
 		glConfig.isFullscreen = qfalse;
 	}
@@ -301,6 +434,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		depthbits = 24;
 	else
 		depthbits = r_depthbits->value;
+
 	stencilbits = r_stencilbits->value;
 	samples = r_ext_multisample->value;
 
@@ -419,13 +553,14 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 			}
 		}
 #endif
-
+#if SDL_MAJOR_VERSION != 2
 		if( SDL_GL_SetAttribute( SDL_GL_SWAP_CONTROL, r_swapInterval->integer ) < 0 )
 			ri.Printf( PRINT_ALL, "r_swapInterval requires libSDL >= 1.2.10\n" );
+#endif
 
 #ifdef USE_ICON
 		{
-			SDL_Surface *icon = SDL_CreateRGBSurfaceFrom(
+			icon = SDL_CreateRGBSurfaceFrom(
 					(void *)CLIENT_WINDOW_ICON.pixel_data,
 					CLIENT_WINDOW_ICON.width,
 					CLIENT_WINDOW_ICON.height,
@@ -438,11 +573,52 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 #endif
 					);
 
+#if SDL_MAJOR_VERSION != 2
 			SDL_WM_SetIcon( icon, NULL );
-			SDL_FreeSurface( icon );
+#endif
 		}
 #endif
+#if SDL_MAJOR_VERSION == 2
+		if( ( SDL_window = SDL_CreateWindow( CLIENT_WINDOW_TITLE, x, y,
+				glConfig.vidWidth, glConfig.vidHeight, flags ) ) == 0 )
+		{
+			ri.Printf( PRINT_DEVELOPER, "SDL_CreateWindow failed: %s\n", SDL_GetError( ) );
+			continue;
+		}
 
+		if( fullscreen )
+		{
+			SDL_DisplayMode mode;
+
+			switch( tcolorbits )
+			{
+				case 16: mode.format = SDL_PIXELFORMAT_RGB565; break;
+				case 24: mode.format = SDL_PIXELFORMAT_RGB24;  break;
+				default: ri.Printf( PRINT_DEVELOPER, "tcolorbits is %d, can't fullscreen\n", tcolorbits ); continue;
+			}
+
+			mode.w = glConfig.vidWidth;
+			mode.h = glConfig.vidHeight;
+			mode.refresh_rate = glConfig.displayFrequency = ri.Cvar_VariableIntegerValue( "r_displayRefresh" );
+			mode.driverdata = NULL;
+
+			if( SDL_SetWindowDisplayMode( SDL_window, &mode ) < 0 )
+			{
+				ri.Printf( PRINT_DEVELOPER, "SDL_SetWindowDisplayMode failed: %s\n", SDL_GetError( ) );
+				continue;
+			}
+		}
+
+		SDL_SetWindowIcon( SDL_window, icon );
+
+		if( ( SDL_glContext = SDL_GL_CreateContext( SDL_window ) ) == NULL )
+		{
+			ri.Printf( PRINT_DEVELOPER, "SDL_GL_CreateContext failed: %s\n", SDL_GetError( ) );
+			continue;
+		}
+
+		SDL_GL_SetSwapInterval( r_swapInterval->integer );
+#else
 		SDL_WM_SetCaption(CLIENT_WINDOW_TITLE, CLIENT_WINDOW_MIN_TITLE);
 		SDL_ShowCursor(0);
 
@@ -453,7 +629,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		}
 
 		opengl_context = GLimp_GetCurrentContext();
-
+#endif
 		ri.Printf( PRINT_ALL, "Using %d/%d/%d Color bits, %d depth, %d stencil display.\n",
 				sdlcolorbits, sdlcolorbits, sdlcolorbits, tdepthbits, tstencilbits);
 
@@ -462,14 +638,18 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		glConfig.stencilBits = tstencilbits;
 		break;
 	}
+	
+	SDL_FreeSurface( icon );
 
 	GLimp_DetectAvailableModes();
 
+#if SDL_MAJOR_VERSION != 2
 	if (!vidscreen)
 	{
 		ri.Printf( PRINT_ALL, "Couldn't get a visual\n" );
 		return RSERR_INVALID_MODE;
 	}
+#endif
 	
 	//
 	// leilei - TV MODE
@@ -509,30 +689,21 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 
 	if( r_tvModeForceAspect->integer ){
 		float ttw = (float)glConfig.vidWidth / ((float)tvWidth * (float)((float)glConfig.vidHeight/(float)tvHeight));			// 640 / 853 = 0.75 = ASPECT VALUE
-
 		tvAspectW = ttw; // let's try this first to see if we can get it to our renderer
-
 		//tvAspectW = 0.75f; // let's try this first to see if we can get it to our renderer
-
 		}
-
 	}
 	// leilei - tv mode hack end
-
-
+#if SDL_MAJOR_VERSION != 2
 	screen = vidscreen;
+#endif
 
-
-if( r_tvModeAspect->integer ){
+	if( r_tvModeAspect->integer ) {
 		float aspe = 640.0f / tvWidth;
 		glConfig.vidWidth = tvWidth * aspe;
 		glConfig.vidHeight = tvHeight * aspe;
-
-		}
-		// then change the gl port..
-
-
-
+	}
+	// then change the gl port..
 
 	glstring = (char *) qglGetString (GL_RENDERER);
 	ri.Printf( PRINT_ALL, "GL_RENDERER: %s\n", glstring );
@@ -551,7 +722,11 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 
 	if (!SDL_WasInit(SDL_INIT_VIDEO))
 	{
+#if SDL_MAJOR_VERSION == 2
+		const char *driverName;
+#else
 		char driverName[ 64 ];
+#endif
 
 		if (SDL_Init(SDL_INIT_VIDEO) == -1)
 		{
@@ -560,7 +735,11 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 			return qfalse;
 		}
 
+#if SDL_MAJOR_VERSION == 2
+		driverName = SDL_GetCurrentVideoDriver();
+#else
 		SDL_VideoDriverName( driverName, sizeof( driverName ) - 1 );
+#endif
 		ri.Printf( PRINT_ALL, "SDL using driver \"%s\"\n", driverName );
 		ri.Cvar_Set( "r_sdlDriver", driverName );
 	}
@@ -837,6 +1016,12 @@ success:
 	// This values force the UI to disable driver selection
 	glConfig.driverType = GLDRV_ICD;
 	glConfig.hardwareType = GLHW_GENERIC;
+
+#if SDL_MAJOR_VERSION == 2
+	// Only using SDL_SetWindowBrightness to determine if hardware gamma is supported
+	glConfig.deviceSupportsGamma = !r_ignorehwgamma->integer &&
+		SDL_SetWindowBrightness( SDL_window, 1.0f ) >= 0;
+#else
 	glConfig.deviceSupportsGamma = SDL_SetGamma( 1.0f, 1.0f, 1.0f ) >= 0;
 
 	// Mysteriously, if you use an NVidia graphics card and multiple monitors,
@@ -844,7 +1029,7 @@ success:
 	// again and you get the correct answer. This is a suspected driver bug, see
 	// http://bugzilla.icculus.org/show_bug.cgi?id=4316
 	glConfig.deviceSupportsGamma = SDL_SetGamma( 1.0f, 1.0f, 1.0f ) >= 0;
-
+#endif
 
 #ifdef _WIN32
 	// leilei - 3dfx gamma 
@@ -874,7 +1059,11 @@ success:
 	ri.Cvar_Get( "r_availableModes", "", CVAR_ROM );
 
 	// This depends on SDL_INIT_VIDEO, hence having it here
+#if SDL_MAJOR_VERSION == 2
+	ri.IN_Init( SDL_window );
+#else
 	ri.IN_Init( );
+#endif
 
 #if defined( _WIN32 ) && defined( USE_CONSOLE_WINDOW )
 		// leilei - hide our console window
@@ -895,7 +1084,11 @@ void GLimp_EndFrame( void )
 	// don't flip if drawing to front buffer
 	if ( Q_stricmp( r_drawBuffer->string, "GL_FRONT" ) != 0 )
 	{
+#if SDL_MAJOR_VERSION == 2
+		SDL_GL_SwapWindow( SDL_window );
+#else
 		SDL_GL_SwapBuffers();
+#endif
 	}
 
 	if( r_fullscreen->modified )
@@ -903,12 +1096,17 @@ void GLimp_EndFrame( void )
 		qboolean    fullscreen;
 		qboolean    needToToggle = qtrue;
 		qboolean    sdlToggled = qfalse;
+
+#if SDL_MAJOR_VERSION == 2
+			fullscreen = !!( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_FULLSCREEN );
+#else
 		SDL_Surface *s = SDL_GetVideoSurface( );
 
 		if( s )
 		{
 			// Find out the current state
 			fullscreen = !!( s->flags & SDL_FULLSCREEN );
+#endif
 				
 			if( r_fullscreen->integer && ri.Cvar_VariableIntegerValue( "in_nograb" ) )
 			{
@@ -921,8 +1119,12 @@ void GLimp_EndFrame( void )
 			needToToggle = !!r_fullscreen->integer != fullscreen;
 
 			if( needToToggle )
+#if SDL_MAJOR_VERSION == 2
+				sdlToggled = SDL_SetWindowFullscreen( SDL_window, r_fullscreen->integer ) >= 0;
+#else
 				sdlToggled = SDL_WM_ToggleFullScreen( s );
 		}
+#endif
 
 		if( needToToggle )
 		{

@@ -29,7 +29,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define MINSDL_PATCH 10
 
 // Input subsystem
+#if SDL_MAJOR_VERSION == 2
+void IN_Init( void *windowData );
+#else
 void IN_Init( void );
+#endif
 void IN_Frame( qboolean in_com_frame );	// youurayy input lag fix
 void IN_Shutdown( void );
 void IN_Restart( void );
