@@ -70,6 +70,8 @@ static cvar_t *in_joystickUseAnalog = NULL;
 
 static int vidRestartTime = 0;
 
+static SDL_Window *SDL_window = NULL;
+
 #define CTRL(a) ((a)-'a'+1)
 
 /*
@@ -576,6 +578,10 @@ static void IN_ActivateMouse( void )
 
 	if( !mouseActive )
 	{
+#if SDL_MAJOR_VERSION == 2
+		SDL_SetRelativeMouseMode( SDL_TRUE );
+		SDL_SetWindowGrab( SDL_window, 1 );
+#else
 		SDL_ShowCursor( 0 );
 #ifdef MACOS_X_CURSOR_HACK
 		// This is a bug in the current SDL/macosx...have to toggle it a few
@@ -584,7 +590,7 @@ static void IN_ActivateMouse( void )
 		SDL_ShowCursor( 0 );
 #endif
 		SDL_WM_GrabInput( SDL_GRAB_ON );
-
+#endif
 		IN_GobbleMotionEvents( );
 	}
 
@@ -594,9 +600,15 @@ static void IN_ActivateMouse( void )
 		if( in_nograb->modified || !mouseActive )
 		{
 			if( in_nograb->integer )
+#if SDL_MAJOR_VERSION == 2
+				SDL_SetWindowGrab( SDL_window, 0 );
+			else
+				SDL_SetWindowGrab( SDL_window, 1 );
+#else
 				SDL_WM_GrabInput( SDL_GRAB_OFF );
 			else
 				SDL_WM_GrabInput( SDL_GRAB_ON );
+#endif
 
 			in_nograb->modified = qfalse;
 		}
