@@ -245,9 +245,13 @@ cpuFeatures_t Sys_GetProcessorFeatures( void )
 #ifndef DEDICATED
 	if( SDL_HasRDTSC( ) )    features |= CF_RDTSC;
 	if( SDL_HasMMX( ) )      features |= CF_MMX;
+#if SDL_MAJOR_VERSION != 2
 	if( SDL_HasMMXExt( ) )   features |= CF_MMX_EXT;
+#endif
 	if( SDL_Has3DNow( ) )    features |= CF_3DNOW;
+#if SDL_MAJOR_VERSION != 2
 	if( SDL_Has3DNowExt( ) ) features |= CF_3DNOW_EXT;
+#endif
 	if( SDL_HasSSE( ) )      features |= CF_SSE;
 	if( SDL_HasSSE2( ) )     features |= CF_SSE2;
 	if( SDL_HasAltiVec( ) )  features |= CF_ALTIVEC;
