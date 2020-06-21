@@ -1260,7 +1260,11 @@ void IN_Frame( qboolean in_com_frame )
 		// Loading in windowed mode
 		IN_DeactivateMouse( );
 	}
+#if SDL_MAJOR_VERSION == 2
+	else if( !( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_INPUT_FOCUS ) )
+#else
 	else if( !( SDL_GetAppState() & SDL_APPINPUTFOCUS ) )
+#endif
 	{
 		// Window not got focus
 		IN_DeactivateMouse( );
