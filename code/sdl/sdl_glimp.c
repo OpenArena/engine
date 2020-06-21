@@ -169,9 +169,42 @@ static void GLimp_DetectAvailableModes(void)
 {
 	char buf[ MAX_STRING_CHARS ] = { 0 };
 	SDL_Rect **modes;
-	int numModes;
+	int numModes = 0;
 	int i;
 
+#if SDL_MAJOR_VERSION == 2
+
+	int display = SDL_GetWindowDisplayIndex( SDL_window );
+	SDL_DisplayMode windowMode;
+
+	if( SDL_GetWindowDisplayMode( SDL_window, &windowMode ) < 0 )
+	{
+		ri.Printf( PRINT_WARNING, "Couldn't get window display mode, no resolutions detected\n" );
+		return;
+	}
+
+	for( i = 0; i < SDL_GetNumDisplayModes( display ); i++ )
+	{
+		SDL_DisplayMode mode;
+
+		if( SDL_GetDisplayMode( display, i, &mode ) < 0 )
+			continue;
+
+		if( !mode.w || !mode.h )
+		{
+			ri.Printf( PRINT_ALL, "Display supports any resolution\n" );
+			return;
+		}
+
+		if( windowMode.format != mode.format )
+			continue;
+
+		modes[ numModes ]->w = mode.w;
+		modes[ numModes ]->h = mode.h;
+		numModes++;
+	}
+
+#else
 	modes = SDL_ListModes( videoInfo->vfmt, SDL_OPENGL | SDL_FULLSCREEN );
 
 	if( !modes )
@@ -187,6 +220,7 @@ static void GLimp_DetectAvailableModes(void)
 	}
 
 	for( numModes = 0; modes[ numModes ]; numModes++ );
+#endif
 
 	if( numModes > 1 )
 		qsort( modes, numModes, sizeof( SDL_Rect* ), GLimp_CompareModes );
