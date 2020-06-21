@@ -1287,11 +1287,19 @@ IN_InitKeyLockStates
 */
 void IN_InitKeyLockStates( void )
 {
+#if SDL_MAJOR_VERSION == 2
+	const unsigned char *keystate = SDL_GetKeyboardState(NULL);
+
+	keys[K_SCROLLOCK].down = keystate[SDL_SCANCODE_SCROLLLOCK];
+	keys[K_KP_NUMLOCK].down = keystate[SDL_SCANCODE_NUMLOCKCLEAR];
+	keys[K_CAPSLOCK].down = keystate[SDL_SCANCODE_CAPSLOCK];
+#else
 	unsigned char *keystate = SDL_GetKeyState(NULL);
 
 	keys[K_SCROLLOCK].down = keystate[SDLK_SCROLLOCK];
 	keys[K_KP_NUMLOCK].down = keystate[SDLK_NUMLOCK];
 	keys[K_CAPSLOCK].down = keystate[SDLK_CAPSLOCK];
+#endif
 }
 
 /*
