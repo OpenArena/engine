@@ -53,7 +53,9 @@ static SDL_Joystick *stick = NULL;
 
 static qboolean mouseAvailable = qfalse;
 static qboolean mouseActive = qfalse;
+#if SDL_MAJOR_VERSION != 2
 static qboolean keyRepeatEnabled = qfalse;
+#endif
 
 static cvar_t *in_mouse             = NULL;
 #ifdef MACOS_X_ACCELERATION_HACK
@@ -1307,7 +1309,11 @@ void IN_InitKeyLockStates( void )
 IN_Init
 ===============
 */
+#if SDL_MAJOR_VERSION == 2
+void IN_Init( void *windowData )
+#else
 void IN_Init( void )
+#endif
 {
 	int appState;
 
@@ -1316,6 +1322,10 @@ void IN_Init( void )
 		Com_Error( ERR_FATAL, "IN_Init called before SDL_Init( SDL_INIT_VIDEO )" );
 		return;
 	}
+
+#if SDL_MAJOR_VERSION == 2
+	SDL_window = (SDL_Window *)windowData;
+#endif
 
 	Com_DPrintf( "\n------- Input Initialization -------\n" );
 
@@ -1333,16 +1343,26 @@ void IN_Init( void )
 	in_disablemacosxmouseaccel = Cvar_Get( "in_disablemacosxmouseaccel", "1", CVAR_ARCHIVE );
 #endif
 
+#if SDL_MAJOR_VERSION == 2
+	SDL_StartTextInput( );
+#else
 	SDL_EnableUNICODE( 1 );
 	SDL_EnableKeyRepeat( SDL_DEFAULT_REPEAT_DELAY, SDL_DEFAULT_REPEAT_INTERVAL );
 	keyRepeatEnabled = qtrue;
+#endif
 
 	mouseAvailable = ( in_mouse->value != 0 );
 	IN_DeactivateMouse( );
 
+#if SDL_MAJOR_VERSION == 2
+	appState = SDL_GetWindowFlags( SDL_window );
+	Cvar_SetValue( "com_unfocused",	!( appState & SDL_WINDOW_INPUT_FOCUS ) );
+	Cvar_SetValue( "com_minimized", appState & SDL_WINDOW_MINIMIZED );
+#else
 	appState = SDL_GetAppState( );
 	Cvar_SetValue( "com_unfocused",	!( appState & SDL_APPINPUTFOCUS ) );
 	Cvar_SetValue( "com_minimized", !( appState & SDL_APPACTIVE ) );
+#endif
 
 	IN_InitKeyLockStates( );
 
@@ -1371,5 +1391,9 @@ IN_Restart
 void IN_Restart( void )
 {
 	IN_ShutdownJoystick( );
+#if SDL_MAJOR_VERSION == 2
+	IN_Init( SDL_window );
+#else
 	IN_Init( );
+#endif
 }
