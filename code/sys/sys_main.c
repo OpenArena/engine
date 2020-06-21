@@ -604,7 +604,12 @@ int main( int argc, char **argv )
 #	endif
 
 	// Run time
+#if SDL_MAJOR_VERSION == 2
+	SDL_version *ver = NULL;
+	SDL_GetVersion( ver );
+#else
 	const SDL_version *ver = SDL_Linked_Version( );
+#endif
 
 #define MINSDL_VERSION \
 	XSTRING(MINSDL_MAJOR) "." \
