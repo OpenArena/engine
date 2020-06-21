@@ -70,7 +70,11 @@ typedef enum
 } rserr_t;
 
 static SDL_Surface *screen = NULL;
+#if SDL_MAJOR_VERSION == 2
+SDL_Window *SDL_window = NULL;
+#else
 static const SDL_VideoInfo *videoInfo = NULL;
+#endif
 
 cvar_t *r_allowSoftwareGL; // Don't abort out if a hardware visual can't be obtained
 cvar_t *r_tvMode; // leilei - tv mode - force 480i rendering, which is then stretched and interlaced
@@ -112,7 +116,11 @@ Minimize the game so that user is back at the desktop
 */
 void GLimp_Minimize(void)
 {
+#if SDL_MAJOR_VERSION == 2
+	SDL_MinimizeWindow( SDL_window );
+#else
 	SDL_WM_IconifyWindow();
+#endif
 }
 
 
