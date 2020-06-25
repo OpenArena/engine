@@ -605,7 +605,7 @@ int main( int argc, char **argv )
 
 	// Run time
 #if SDL_MAJOR_VERSION == 2
-	SDL_version *ver = NULL;
+	SDL_version ver[1];
 	SDL_GetVersion( ver );
 #else
 	const SDL_version *ver = SDL_Linked_Version( );
