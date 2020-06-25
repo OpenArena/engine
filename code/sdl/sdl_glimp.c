@@ -696,7 +696,11 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 
 	if (!SDL_WasInit(SDL_INIT_VIDEO))
 	{
+#if SDL_MAJOR_VERSION == 2
+		const char *driverName;
+#else
 		char driverName[ 64 ];
+#endif
 
 		if (SDL_Init(SDL_INIT_VIDEO) == -1)
 		{
@@ -705,7 +709,11 @@ static qboolean GLimp_StartDriverAndSetMode(int mode, qboolean fullscreen, qbool
 			return qfalse;
 		}
 
+#if SDL_MAJOR_VERSION == 2
+		driverName = SDL_GetCurrentVideoDriver();
+#else
 		SDL_VideoDriverName( driverName, sizeof( driverName ) - 1 );
+#endif
 		ri.Printf( PRINT_ALL, "SDL using driver \"%s\"\n", driverName );
 		ri.Cvar_Set( "r_sdlDriver", driverName );
 	}
