@@ -47,7 +47,9 @@ typedef void *QGLContext;
 #define GLimp_SetCurrentContext(ctx)
 #endif
 
+#if SDL_MAJOR_VERSION != 2
 static QGLContext opengl_context;
+#endif
 
 int tvMode;	// leilei - tvmode
 int tvWidth;
@@ -171,7 +173,7 @@ GLimp_DetectAvailableModes
 static void GLimp_DetectAvailableModes(void)
 {
 	char buf[ MAX_STRING_CHARS ] = { 0 };
-	SDL_Rect **modes;
+	SDL_Rect *modes[128];
 	int numModes = 0;
 	int i;
 
@@ -1054,7 +1056,11 @@ void GLimp_EndFrame( void )
 	// don't flip if drawing to front buffer
 	if ( Q_stricmp( r_drawBuffer->string, "GL_FRONT" ) != 0 )
 	{
+#if SDL_MAJOR_VERSION == 2
+		SDL_GL_SwapWindow( SDL_window );
+#else
 		SDL_GL_SwapBuffers();
+#endif
 	}
 
 	if( r_fullscreen->modified )
@@ -1062,12 +1068,17 @@ void GLimp_EndFrame( void )
 		qboolean    fullscreen;
 		qboolean    needToToggle = qtrue;
 		qboolean    sdlToggled = qfalse;
+
+#if SDL_MAJOR_VERSION == 2
+			fullscreen = !!( SDL_GetWindowFlags( SDL_window ) & SDL_WINDOW_FULLSCREEN );
+#else
 		SDL_Surface *s = SDL_GetVideoSurface( );
 
 		if( s )
 		{
 			// Find out the current state
 			fullscreen = !!( s->flags & SDL_FULLSCREEN );
+#endif
 				
 			if( r_fullscreen->integer && ri.Cvar_VariableIntegerValue( "in_nograb" ) )
 			{
@@ -1080,8 +1091,12 @@ void GLimp_EndFrame( void )
 			needToToggle = !!r_fullscreen->integer != fullscreen;
 
 			if( needToToggle )
+#if SDL_MAJOR_VERSION == 2
+				sdlToggled = SDL_SetWindowFullscreen( SDL_window, r_fullscreen->integer ) >= 0;
+#else
 				sdlToggled = SDL_WM_ToggleFullScreen( s );
 		}
+#endif
 
 		if( needToToggle )
 		{
