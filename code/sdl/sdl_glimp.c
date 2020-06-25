@@ -146,8 +146,13 @@ GLimp_CompareModes
 static int GLimp_CompareModes( const void *a, const void *b )
 {
 	const float ASPECT_EPSILON = 0.001f;
+#if SDL_MAJOR_VERSION == 2
+	SDL_Rect *modeA = (SDL_Rect *)a;
+	SDL_Rect *modeB = (SDL_Rect *)b;
+#else
 	SDL_Rect *modeA = *(SDL_Rect **)a;
 	SDL_Rect *modeB = *(SDL_Rect **)b;
+#endif
 	float aspectA = (float)modeA->w / (float)modeA->h;
 	float aspectB = (float)modeB->w / (float)modeB->h;
 	int areaA = modeA->w * modeA->h;
@@ -173,7 +178,11 @@ GLimp_DetectAvailableModes
 static void GLimp_DetectAvailableModes(void)
 {
 	char buf[ MAX_STRING_CHARS ] = { 0 };
+#if SDL_MAJOR_VERSION == 2
+	SDL_Rect modes[ 128 ];
+#else
 	SDL_Rect *modes[128];
+#endif
 	int numModes = 0;
 	int i;
 
@@ -204,11 +213,23 @@ static void GLimp_DetectAvailableModes(void)
 		if( windowMode.format != mode.format )
 			continue;
 
-		modes[ numModes ]->w = mode.w;
-		modes[ numModes ]->h = mode.h;
+		modes[ numModes ].w = mode.w;
+		modes[ numModes ].h = mode.h;
 		numModes++;
 	}
 
+	if( numModes > 1 )
+		qsort( modes, numModes, sizeof( SDL_Rect ), GLimp_CompareModes );
+
+	for( i = 0; i < numModes; i++ )
+	{
+		const char *newModeString = va( "%ux%u ", modes[ i ].w, modes[ i ].h );
+
+		if( strlen( newModeString ) < (int)sizeof( buf ) - strlen( buf ) )
+			Q_strcat( buf, sizeof( buf ), newModeString );
+		else
+			ri.Printf( PRINT_WARNING, "Skipping mode %ux%x, buffer too small\n", modes[i].w, modes[i].h );
+	}
 #else
 	modes = SDL_ListModes( videoInfo->vfmt, SDL_OPENGL | SDL_FULLSCREEN );
 
@@ -225,7 +246,6 @@ static void GLimp_DetectAvailableModes(void)
 	}
 
 	for( numModes = 0; modes[ numModes ]; numModes++ );
-#endif
 
 	if( numModes > 1 )
 		qsort( modes, numModes, sizeof( SDL_Rect* ), GLimp_CompareModes );
@@ -239,6 +259,7 @@ static void GLimp_DetectAvailableModes(void)
 		else
 			ri.Printf( PRINT_WARNING, "Skipping mode %ux%x, buffer too small\n", modes[i]->w, modes[i]->h );
 	}
+#endif
 
 	if( *buf )
 	{
