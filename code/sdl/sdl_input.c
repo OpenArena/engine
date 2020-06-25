@@ -605,9 +605,9 @@ static void IN_ActivateMouse( void )
 		{
 			if( in_nograb->integer )
 #if SDL_MAJOR_VERSION == 2
-				SDL_SetWindowGrab( SDL_window, 0 );
+				SDL_SetWindowGrab( SDL_window, SDL_FALSE );
 			else
-				SDL_SetWindowGrab( SDL_window, 1 );
+				SDL_SetWindowGrab( SDL_window, SDL_TRUE );
 #else
 				SDL_WM_GrabInput( SDL_GRAB_OFF );
 			else
@@ -1379,10 +1379,17 @@ IN_Shutdown
 */
 void IN_Shutdown( void )
 {
+#if SDL_MAJOR_VERSION == 2
+	SDL_StopTextInput( );
+#endif
 	IN_DeactivateMouse( );
 	mouseAvailable = qfalse;
 
 	IN_ShutdownJoystick( );
+
+#if SDL_MAJOR_VERSION == 2
+	SDL_window = NULL;
+#endif
 }
 
 /*

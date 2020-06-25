@@ -169,7 +169,11 @@ typedef struct {
 	void	(*CL_WriteAVIVideoFrame)( const byte *buffer, int size );
 
 	// input event handling
+#if SDL_MAJOR_VERSION == 2
+	void	(*IN_Init)( void *windowData );
+#else
 	void	(*IN_Init)( void );
+#endif
 	void	(*IN_Shutdown)( void );
 	void	(*IN_Restart)( void );
 

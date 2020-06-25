@@ -1057,7 +1057,11 @@ success:
 	ri.Cvar_Get( "r_availableModes", "", CVAR_ROM );
 
 	// This depends on SDL_INIT_VIDEO, hence having it here
+#if SDL_MAJOR_VERSION == 2
+	ri.IN_Init( SDL_window );
+#else
 	ri.IN_Init( );
+#endif
 
 #if defined( _WIN32 ) && defined( USE_CONSOLE_WINDOW )
 		// leilei - hide our console window
