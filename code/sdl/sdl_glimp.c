@@ -181,7 +181,7 @@ static void GLimp_DetectAvailableModes(void)
 #if SDL_MAJOR_VERSION == 2
 	SDL_Rect modes[ 128 ];
 #else
-	SDL_Rect *modes[128];
+	SDL_Rect **modes;
 #endif
 	int numModes = 0;
 	int i;
@@ -365,6 +365,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		}
 #else
 		if ( videoInfo->current_h > 0 )
+		{
 			glConfig.vidWidth = videoInfo->current_w;
 			glConfig.vidHeight = videoInfo->current_h;
 		}

@@ -72,7 +72,9 @@ static cvar_t *in_joystickUseAnalog = NULL;
 
 static int vidRestartTime = 0;
 
+#if SDL_MAJOR_VERSION == 2
 static SDL_Window *SDL_window = NULL;
+#endif
 
 #define CTRL(a) ((a)-'a'+1)
 
