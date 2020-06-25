@@ -990,6 +990,12 @@ success:
 	// This values force the UI to disable driver selection
 	glConfig.driverType = GLDRV_ICD;
 	glConfig.hardwareType = GLHW_GENERIC;
+
+#if SDL_MAJOR_VERSION == 2
+	// Only using SDL_SetWindowBrightness to determine if hardware gamma is supported
+	glConfig.deviceSupportsGamma = !r_ignorehwgamma->integer &&
+		SDL_SetWindowBrightness( SDL_window, 1.0f ) >= 0;
+#else
 	glConfig.deviceSupportsGamma = SDL_SetGamma( 1.0f, 1.0f, 1.0f ) >= 0;
 
 	// Mysteriously, if you use an NVidia graphics card and multiple monitors,
@@ -997,7 +1003,7 @@ success:
 	// again and you get the correct answer. This is a suspected driver bug, see
 	// http://bugzilla.icculus.org/show_bug.cgi?id=4316
 	glConfig.deviceSupportsGamma = SDL_SetGamma( 1.0f, 1.0f, 1.0f ) >= 0;
-
+#endif
 
 #ifdef _WIN32
 	// leilei - 3dfx gamma 
