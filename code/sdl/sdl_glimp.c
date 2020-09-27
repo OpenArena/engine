@@ -283,6 +283,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 	int accumbits;	// leilei - motionblur
 	int samples;
 	int i = 0;
+	SDL_Surface *icon = NULL;
 #if SDL_MAJOR_VERSION == 2
 	Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
 	int display = 0;
@@ -559,7 +560,7 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 
 #ifdef USE_ICON
 		{
-			SDL_Surface *icon = SDL_CreateRGBSurfaceFrom(
+			icon = SDL_CreateRGBSurfaceFrom(
 					(void *)CLIENT_WINDOW_ICON.pixel_data,
 					CLIENT_WINDOW_ICON.width,
 					CLIENT_WINDOW_ICON.height,
@@ -572,12 +573,9 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 #endif
 					);
 
-#if SDL_MAJOR_VERSION == 2
-			SDL_SetWindowIcon( SDL_window, icon );
-#else
+#if SDL_MAJOR_VERSION != 2
 			SDL_WM_SetIcon( icon, NULL );
 #endif
-			SDL_FreeSurface( icon );
 		}
 #endif
 #if SDL_MAJOR_VERSION == 2
@@ -611,6 +609,8 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 			}
 		}
 
+		SDL_SetWindowIcon( SDL_window, icon );
+
 		if( ( SDL_glContext = SDL_GL_CreateContext( SDL_window ) ) == NULL )
 		{
 			ri.Printf( PRINT_DEVELOPER, "SDL_GL_CreateContext failed: %s\n", SDL_GetError( ) );
@@ -638,6 +638,8 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		glConfig.stencilBits = tstencilbits;
 		break;
 	}
+	
+	SDL_FreeSurface( icon );
 
 	GLimp_DetectAvailableModes();
 
