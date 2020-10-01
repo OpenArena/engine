@@ -140,7 +140,9 @@ SNDDMA_Init
 */
 qboolean SNDDMA_Init(void)
 {
+#if SDL_MAJOR_VERSION != 2
 	char drivername[128];
+#endif
 	SDL_AudioSpec desired;
 	SDL_AudioSpec obtained;
 	int tmp;
@@ -169,9 +171,13 @@ qboolean SNDDMA_Init(void)
 
 	Com_Printf( "OK\n" );
 
+#if SDL_MAJOR_VERSION == 2
+	Com_Printf( "SDL audio driver is \"%s\".\n", SDL_GetCurrentAudioDriver( ) );
+#else
 	if (SDL_AudioDriverName(drivername, sizeof (drivername)) == NULL)
 		strcpy(drivername, "(UNKNOWN)");
 	Com_Printf("SDL audio driver is \"%s\".\n", drivername);
+#endif
 
 	memset(&desired, '\0', sizeof (desired));
 	memset(&obtained, '\0', sizeof (obtained));

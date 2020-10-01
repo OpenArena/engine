@@ -240,6 +240,10 @@ ifndef DEBUG_CFLAGS
 DEBUG_CFLAGS=-g -O0
 endif
 
+ifndef SDL_VERSION
+SDL_VERSION=2
+endif
+
 #############################################################################
 
 BD=$(BUILD_DIR)/debug-$(PLATFORM)-$(ARCH)
@@ -274,7 +278,11 @@ Q3LCCETCDIR=$(MOUNT_DIR)/tools/lcc/etc
 Q3LCCSRCDIR=$(MOUNT_DIR)/tools/lcc/src
 LOKISETUPDIR=misc/setup
 NSISDIR=misc/nsis
-SDLHDIR=$(MOUNT_DIR)/SDL12
+ifeq ($(SDL_VERSION),2)
+  SDLHDIR=$(MOUNT_DIR)/SDL2
+else
+  SDLHDIR=$(MOUNT_DIR)/SDL12
+endif
 LIBSDIR=$(MOUNT_DIR)/libs
 
 bin_path=$(shell which $(1) 2> /dev/null)
@@ -288,15 +296,27 @@ ifneq ($(BUILD_CLIENT),0)
     CURL_LIBS=$(shell pkg-config --silence-errors --libs libcurl)
     OPENAL_CFLAGS=$(shell pkg-config --silence-errors --cflags openal)
     OPENAL_LIBS=$(shell pkg-config --silence-errors --libs openal)
-    SDL_CFLAGS=$(shell pkg-config --silence-errors --cflags sdl|sed 's/-Dmain=SDL_main//')
-    SDL_LIBS=$(shell pkg-config --silence-errors --libs sdl)
+    ifeq ($(SDL_VERSION),2)
+      SDL_CFLAGS=$(shell pkg-config --silence-errors --cflags sdl2|sed 's/-Dmain=SDL_main//')
+      SDL_LIBS=$(shell pkg-config --silence-errors --libs sdl2)
+    else
+      SDL_CFLAGS=$(shell pkg-config --silence-errors --cflags sdl|sed 's/-Dmain=SDL_main//')
+      SDL_LIBS=$(shell pkg-config --silence-errors --libs sdl)
+    endif
     FREETYPE_CFLAGS=$(shell pkg-config --silence-errors --cflags freetype2)
   endif
   # Use sdl-config if all else fails
   ifeq ($(SDL_CFLAGS),)
-    ifneq ($(call bin_path, sdl-config),)
-      SDL_CFLAGS=$(shell sdl-config --cflags)
-      SDL_LIBS=$(shell sdl-config --libs)
+    ifeq ($(SDL_VERSION),2)
+      ifneq ($(call bin_path, sdl2-config),)
+        SDL_CFLAGS=$(shell sdl2-config --cflags)
+        SDL_LIBS=$(shell sdl2-config --libs)
+      endif
+    else
+      ifneq ($(call bin_path, sdl-config),)
+        SDL_CFLAGS=$(shell sdl-config --cflags)
+        SDL_LIBS=$(shell sdl-config --libs)
+      endif
     endif
   endif
 endif
@@ -495,11 +515,17 @@ ifeq ($(PLATFORM),darwin)
 
   # We copy sdlmain before ranlib'ing it so that subversion doesn't think
   #  the file has been modified by each build.
-  LIBSDLMAIN=$(B)/libSDLmain.a
-  LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDLmain.a
-  CLIENT_LIBS += -framework IOKit \
-    $(LIBSDIR)/macosx/libSDL-1.2.0.dylib
-  RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL-1.2.0.dylib
+  ifeq ($(SDL_VERSION),2)
+    LIBSDLMAIN=$(B)/libSDL2main.a
+    LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDL2main.a
+    CLIENT_LIBS += -framework IOKit $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+    RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+  else
+    LIBSDLMAIN=$(B)/libSDLmain.a
+    LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDLmain.a
+    CLIENT_LIBS += -framework IOKit $(LIBSDIR)/macosx/libSDL-1.2.0.dylib
+    RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL-1.2.0.dylib
+  endif
 
   OPTIMIZEVM += -falign-loops=16
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
@@ -643,24 +669,44 @@ ifeq ($(PLATFORM),mingw32)
 
   ifeq ($(USE_LOCAL_HEADERS),1)
     CLIENT_CFLAGS += -I$(SDLHDIR)/include
-    ifeq ($(ARCH),x86)
-    CLIENT_LIBS += $(LIBSDIR)/win32/libSDLmain.a \
-                      $(LIBSDIR)/win32/libSDL.dll.a
-    RENDERER_LIBS += $(LIBSDIR)/win32/libSDLmain.a \
-                      $(LIBSDIR)/win32/libSDL.dll.a
-    SDLDLL=SDL.dll
+    ifeq ($(SDL_VERSION),2)
+      ifeq ($(ARCH),x86)
+        CLIENT_LIBS += $(LIBSDIR)/win32/libSDL2main.a \
+                          $(LIBSDIR)/win32/libSDL2.dll.a
+        RENDERER_LIBS += $(LIBSDIR)/win32/libSDL2main.a \
+                          $(LIBSDIR)/win32/libSDL2.dll.a
+        SDLDLL=SDL2.dll
+      else
+        CLIENT_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
+                          $(LIBSDIR)/win64/libSDL264.dll.a
+        RENDERER_LIBS += $(LIBSDIR)/win64/libSDL264main.a \
+                          $(LIBSDIR)/win64/libSDL264.dll.a
+        SDLDLL=SDL264.dll
+      endif
     else
-    CLIENT_LIBS += $(LIBSDIR)/win64/libSDLmain.a \
-                      $(LIBSDIR)/win64/libSDL64.dll.a
-    RENDERER_LIBS += $(LIBSDIR)/win64/libSDLmain.a \
-                      $(LIBSDIR)/win64/libSDL64.dll.a
-    SDLDLL=SDL64.dll
+      ifeq ($(ARCH),x86)
+        CLIENT_LIBS += $(LIBSDIR)/win32/libSDLmain.a \
+                          $(LIBSDIR)/win32/libSDL.dll.a
+        RENDERER_LIBS += $(LIBSDIR)/win32/libSDLmain.a \
+                          $(LIBSDIR)/win32/libSDL.dll.a
+        SDLDLL=SDL.dll
+      else
+        CLIENT_LIBS += $(LIBSDIR)/win64/libSDLmain.a \
+                          $(LIBSDIR)/win64/libSDL64.dll.a
+        RENDERER_LIBS += $(LIBSDIR)/win64/libSDLmain.a \
+                          $(LIBSDIR)/win64/libSDL64.dll.a
+        SDLDLL=SDL64.dll
+      endif
     endif
   else
     CLIENT_CFLAGS += $(SDL_CFLAGS)
     CLIENT_LIBS += $(SDL_LIBS)
     RENDERER_LIBS += $(SDL_LIBS)
-    SDLDLL=SDL.dll
+    ifeq ($(SDL_VERSION),2)
+      SDLDLL=SDL2.dll
+    else
+      SDLDLL=SDL.dll
+    endif
   endif
 
 else # ifeq mingw32

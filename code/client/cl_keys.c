@@ -21,6 +21,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 #include "client.h"
 
+#ifdef USE_LOCAL_HEADERS
+#	include "SDL.h"
+#else
+#	include <SDL.h>
+#endif
+
 /*
 
 key up events are sent even if in console mode
@@ -401,7 +407,11 @@ void Field_Paste( field_t *edit ) {
 	char	*cbd;
 	int		pasteLen, i;
 
+#if SDL_MAJOR_VERSION == 2
+	cbd = SDL_GetClipboardText();
+#else
 	cbd = Sys_GetClipboardData();
+#endif
 
 	if ( !cbd ) {
 		return;
@@ -413,7 +423,11 @@ void Field_Paste( field_t *edit ) {
 		Field_CharEvent( edit, cbd[i] );
 	}
 
+#if SDL_MAJOR_VERSION == 2
+	SDL_free( cbd );
+#else
 	Z_Free( cbd );
+#endif
 }
 
 /*

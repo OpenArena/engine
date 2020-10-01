@@ -584,7 +584,11 @@ CL_GetClipboardData
 static void CL_GetClipboardData( char *buf, int buflen ) {
 	char	*cbd;
 
+#if SDL_MAJOR_VERSION == 2
+	cbd = Sys_GetClipboardData2();
+#else
 	cbd = Sys_GetClipboardData();
+#endif
 
 	if ( !cbd ) {
 		*buf = 0;
