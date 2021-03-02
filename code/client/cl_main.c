@@ -3642,7 +3642,9 @@ void CL_Init( void ) {
 
 	CL_GenerateQKey();
 	Cvar_Get( "cl_guid", "", CVAR_USERINFO | CVAR_ROM );
-	CL_UpdateGUID( NULL, 0 );
+	if (!cl_guidServerUniq->integer) {
+		CL_UpdateGUID( NULL, 0 );
+	}
 
 	Com_Printf( "----- Client Initialization Complete -----\n" );
 }
