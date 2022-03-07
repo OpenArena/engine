@@ -501,7 +501,6 @@ ifeq ($(PLATFORM),darwin)
     $(LIBSDIR)/macosx/libSDL-1.2.0.dylib
   RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL-1.2.0.dylib
 
-  OPTIMIZEVM += -falign-loops=16
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
 
   SHLIBEXT=dylib
