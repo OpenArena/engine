@@ -281,7 +281,7 @@ itemconfig_t *LoadItemConfig(char *filename)
 		LibVarSet( "max_iteminfo", "256" );
 	}
 
-	strncpy( path, filename, MAX_PATH );
+	Q_strncpyz( path, filename, MAX_PATH );
 	PC_SetBaseFolder(BOTFILESBASEFOLDER);
 	source = LoadSourceFile( path );
 	if( !source ) {
@@ -685,8 +685,7 @@ void BotGoalName(int number, char *name, int size)
 	{
 		if (li->number == number)
 		{
-			strncpy(name, itemconfig->iteminfo[li->iteminfo].name, size-1);
-			name[size-1] = '\0';
+			Q_strncpyz(name, itemconfig->iteminfo[li->iteminfo].name, size);
 			return;
 		} //end for
 	} //end for
