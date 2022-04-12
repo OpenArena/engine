@@ -517,14 +517,14 @@ ifeq ($(PLATFORM),darwin)
   #  the file has been modified by each build.
   ifeq ($(SDL_VERSION),2)
     LIBSDLMAIN=$(B)/libSDL2main.a
-    LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDL2main.a
-    CLIENT_LIBS += -framework IOKit $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
-    RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL2-2.0.0.dylib
+    #LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDL2main.a
+    CLIENT_LIBS += -framework IOKit $(shell sdl2-config --libs) 
+    RENDERER_LIBS += -framework OpenGL $(shell sdl2-config --libs)
   else
     LIBSDLMAIN=$(B)/libSDLmain.a
     LIBSDLMAINSRC=$(LIBSDIR)/macosx/libSDLmain.a
-    CLIENT_LIBS += -framework IOKit $(LIBSDIR)/macosx/libSDL-1.2.0.dylib
-    RENDERER_LIBS += -framework OpenGL $(LIBSDIR)/macosx/libSDL-1.2.0.dylib
+    CLIENT_LIBS += -framework IOKit $(shell sdl-config --libs)
+    RENDERER_LIBS += -framework OpenGL $(shell sdl-config --libs)
   endif
 
   OPTIMIZEVM += -falign-loops=16
