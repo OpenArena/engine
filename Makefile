@@ -527,7 +527,6 @@ ifeq ($(PLATFORM),darwin)
     RENDERER_LIBS += -framework OpenGL $(shell sdl-config --libs)
   endif
 
-  OPTIMIZEVM += -falign-loops=16
   OPTIMIZE = $(OPTIMIZEVM) -ffast-math
 
   SHLIBEXT=dylib
