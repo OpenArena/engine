@@ -794,7 +794,7 @@ int Q_vsnprintf(char *str, size_t size, const char *format, va_list ap)
  It is here to avoid undifined behavior when source and destination overlap.
  This is used quite a lot in the code.
  */
-static char *qstrncpy(char *strDest, const char *strSource, size_t count) {
+char *qstrncpy(char *strDest, const char *strSource, size_t count) {
 	char *s;
 
 	s = strDest;

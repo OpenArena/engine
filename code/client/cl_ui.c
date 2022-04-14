@@ -999,7 +999,7 @@ intptr_t CL_UISystemCalls( intptr_t *args ) {
 		return 0;
 
 	case UI_STRNCPY:
-		strncpy( VMA(1), VMA(2), args[3] );
+		qstrncpy( VMA(1), VMA(2), args[3] );
 		return args[1];
 
 	case UI_SIN:
