@@ -576,6 +576,30 @@ static void S_Base_StartSoundEx( vec3_t origin, int entityNum, int entchannel, s
 	}
 
 	ch = s_channels;
+
+
+	// leilei - check if this sound is already playing and kill it
+	if (s_interrupts->integer == 1)
+	{
+		for ( i = 0; i < MAX_CHANNELS ; i++, ch++ ) {		
+			if (ch->entnum == entityNum && ch->thesfx == sfx) 
+				{
+					S_ChannelFree(ch);
+				}
+		}
+	}
+
+	// leilei - check if this channel is being used, and kill that too 
+	else if (s_interrupts->integer == 2)
+	{
+		for ( i = 0; i < MAX_CHANNELS ; i++, ch++ ) {		
+			if (ch->entnum == entityNum && ch->entchannel == entchannel && ch->thesfx && (entchannel != CHAN_AUTO)) 
+				{
+					S_ChannelFree(ch);
+				}
+		}
+	}
+
 	inplay = 0;
 	for ( i = 0; i < MAX_CHANNELS ; i++, ch++ ) {		
 		if (ch->entnum == entityNum && ch->thesfx == sfx) {

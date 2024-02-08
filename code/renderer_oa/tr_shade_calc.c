@@ -1577,6 +1577,158 @@ int			i;
 
 }
 
+
+
+/*
+** RB_GlowBlend
+**
+** leilei - blends a specific color (specified in hex)
+*/
+
+static void RB_GlowBlend( unsigned char *colors, int glowcol, int fx )
+{
+	int				i;
+	float			*v, *normal;
+	float			incoming;
+	vec3_t			lightDir;
+	vec3_t			directedLight;
+	int				numVertexes;
+
+	directedLight[0] = (glowcol >> 16) & 0xFF;
+	directedLight[1] = (glowcol >> 8 ) & 0xFF;
+	directedLight[2] = glowcol & 0xFF;
+	
+	// if we don't have overbrights, we need to beef up the colors
+	if (tr.identityLight == 1){
+	int f;
+		for (f=0;f<3;f++)
+		{
+			directedLight[f] *=2;
+			if (directedLight[f]>255)directedLight[f]=255;
+		}
+	}	
+	
+	VectorCopy( backEnd.or.viewOrigin, lightDir );
+
+	v = tess.xyz[0];
+	normal = tess.normal[0];
+		VectorNormalizeFast( lightDir );
+
+	numVertexes = tess.numVertexes;
+	for (i = 0 ; i < numVertexes ; i++, v += 4, normal += 4) {
+
+		if (fx == 1)
+			incoming = sin(i+(tess.shaderTime * 12)) * DotProduct (normal, lightDir); // fluctuate!
+		else if (fx == 2)
+			incoming = sin((tess.shaderTime * 12)) *  DotProduct (normal, lightDir); // pulsate!
+		else if (fx == 3){
+			incoming = DotProduct (normal, lightDir) * 4.0;			
+			incoming = sin(incoming+tess.shaderTime * 16); // wave
+			}
+		else if (fx == 6)
+		{
+			float eh, off;	
+			vec3_t the;
+	
+			eh = (v[0] + v[1] + v[2]) * 3;
+			off = sin(eh + tess.shaderTime * 5);
+
+			VectorScale( normal, off, the);
+			
+			incoming = VectorNormalize(the);
+			if (colors[i*4+3] < 128) incoming = 0;
+
+			// clamp
+			if (incoming > 1) incoming = 1;
+			if (incoming < 0) incoming = 0;
+	
+			// blend the new color over the current color
+			colors[i*4+0] = (colors[i*4+0] * (1-incoming)) + ((incoming) * directedLight[0]);
+			colors[i*4+1] = (colors[i*4+1] * (1-incoming)) + ((incoming) * directedLight[1]);
+			colors[i*4+2] = (colors[i*4+2] * (1-incoming)) + ((incoming) * directedLight[2]);
+			return;
+		}
+		else	// generic glow
+			{ 
+			incoming = DotProduct (normal, lightDir) * 0.8f;
+			}
+	
+		// clamp
+		if (incoming > 1) incoming = 1;
+		if (incoming < 0) incoming = 0;
+
+		// blend the new color over the current color
+		colors[i*4+0] = (colors[i*4+0] * (incoming)) + ((1-incoming) * directedLight[0]);
+		colors[i*4+1] = (colors[i*4+1] * (incoming)) + ((1-incoming) * directedLight[1]);
+		colors[i*4+2] = (colors[i*4+2] * (incoming)) + ((1-incoming) * directedLight[2]);
+	}
+}
+
+
+
+/*
+** RB_UVColor
+**
+** leilei - blends a specific color (specified in hex)
+*/
+
+static void RB_UVColor( unsigned char *colors, int glowcol, int fx )
+{
+	int				i;
+	float			*v, *normal;
+	float			incoming;
+	vec3_t			lightDir;
+	vec3_t			directedLight;
+	float			*texc;
+	vec3_t			col;
+
+	int				numVertexes;
+	vec3_t		newcol;
+
+	directedLight[0] = (glowcol >> 16) & 0xFF;
+	directedLight[1] = (glowcol >> 8 ) & 0xFF;
+	directedLight[2] = glowcol & 0xFF;
+	
+
+	VectorCopy( backEnd.or.viewOrigin, lightDir );
+
+	v = tess.xyz[0];
+	normal = tess.normal[0];
+	texc = tess.texCoords[0];
+
+	numVertexes = tess.numVertexes;
+	for (i = 0 ; i < numVertexes ; i++, v += 4, texc+=2 ) {
+		int tf;
+		// For each mode, deal with fading for towards the edge of a uvmap
+
+		incoming = 0;
+		if (fx == 0) // Off the top edge, set it to the color
+		{
+			if (texc[1] < 0.0f) incoming = 1;
+		}
+		if (fx == 1) // Fade it 
+		{
+			if (v[4] < 0.0f) incoming = 255;
+		}
+
+		for(tf=0 ; tf<3 ; tf++ )
+		{
+			newcol[tf] = incoming;
+
+			if (newcol[tf] > 255) newcol[tf] = 255;
+			if (newcol[tf] < 0) newcol[tf] = 0;
+		}
+
+		// blend the new color over the current color
+		colors[i*4+0] = newcol[0];
+		colors[i*4+1] = newcol[1];
+		colors[i*4+2] = newcol[2];
+	}
+}
+
+
+
+
 /*
 ** RB_CalcDiffuseColor
 **
@@ -1905,6 +2057,7 @@ void RB_CalcDiffuseColor( unsigned char *colors )
 
 }
 
+
 /*
 ** RB_CalcUniformColor
 **
@@ -1972,6 +2125,136 @@ void RB_CalcDynamicColor( unsigned char *colors )
 		colors[i*4+3] = dynamic[3];
 	}
 }
+
+
+void RB_CalcGlowBlend( unsigned char *colors, int glowcol, int fx )
+{
+	RB_GlowBlend( colors, glowcol, fx ); 
+}
+
+void RB_CalcUVColor( unsigned char *colors, int glowcol, int fx )
+{
+	RB_UVColor( colors, glowcol, fx ); 
+}
+
+
+// normalize colors but alpha has the intensity of the colors.
+void RB_CalcNormalizeToAlpha( unsigned char *colors)
+{
+	int				i;
+	float			*v, *normal;
+	int				numVertexes;
+
+	v = tess.xyz[0];
+	normal = tess.normal[0]; // do we even need this
+
+	numVertexes = tess.numVertexes;
+	for (i = 0 ; i < numVertexes ; i++, v += 4, normal += 4) {
+
+		colors[i*4+3] = LUMA(colors[i*4+0], colors[i*4+1], colors[i*4+2]); 
+		// leilei - boost it up a little more to fight pvr1's subtractive modulation
+		//colors[i*4+3] = pow(colors[i*4+3]/255,0.7f)*255;
+		{
+			int		max;
+	
+			max = colors[i*4+0] > colors[i*4+1] ? colors[i*4+0] : colors[i*4+1];
+			max = max > colors[i*4+2] ? max : colors[i*4+2];
+			max += 1;
+			colors[i*4+0] = colors[i*4+0] * 255 / max;
+			colors[i*4+1] = colors[i*4+1] * 255 / max;
+			colors[i*4+2] = colors[i*4+2] * 255 / max;
+
+		}
+	}
+}
+
+
+
+/*
+** RB_VertLightsPerVert
+**
+** leilei - for maps, try to light up vertex lighting with dynamic lights
+*/
+
+
+static void RB_VertLightsPerVert( unsigned char *colors )
+{
+	int				i, f;
+	float			*v, *normal;
+	int				numVertexes;
+
+	vec3_t cl;
+	vec3_t cv;
+
+	v = tess.xyz[0];
+	normal = tess.normal[0];
+
+	numVertexes = tess.numVertexes;
+	for (i = 0 ; i < numVertexes ; i++, v += 4, normal += 4) {
+		// get the world colors
+		cl[0] = colors[i*4+0];
+		cl[1] = colors[i*4+1];
+		cl[2] = colors[i*4+2];
+
+
+	if(r_dynamiclight->integer)
+		{
+			for (f=0 ; f<backEnd.refdef.num_dlights ; f++) 
+			{
+				dlight_t		*l;
+				l = &backEnd.refdef.dlights[f];
+		
+		
+					if (l->radius >= 1) // if light is good, mark the map
+					{
+							// calc the light against the world verts
+							VectorSubtract( l->origin, v, cv );
+							float power = 2048 * ( l->radius );
+							float d = VectorNormalize( cv );
+							power = power / ( d * d );
+							if (power < 0) power = 0;
+						
+							// add the color of the light
+							cl[0] += (l->color[0] * power);
+							cl[1] += (l->color[1] * power);
+							cl[2] += (l->color[2] * power);
+						
+							// clamp stuff
+							// normalize by color instead of saturating to white
+							if ( ( (int)cl[0] | (int)cl[1] | (int)cl[2] ) > 255 ) {
+								int		max;
+						
+								max = cl[0] > cl[1] ? cl[0] : cl[1];
+								max = max > cl[2] ? max : cl[2];
+								cl[0] = cl[0] * 255 / max;
+								cl[1] = cl[1] * 255 / max;
+								cl[2] = cl[2] * 255 / max;
+							}
+							if (cl[0] < 0) cl[0] = 0;
+							if (cl[1] < 0) cl[1] = 0;
+							if (cl[2] < 0) cl[2] = 0;
+					
+						//	if (cl[0] > 255) cl[0] = 255;
+						//	if (cl[1] > 255) cl[1] = 255;
+						//	if (cl[2] > 255) cl[2] = 255;
+					}
+			}
+		}
+		// give the world our new modulated color
+		colors[i*4+0] = cl[0];
+		colors[i*4+1] = cl[1];
+		colors[i*4+2] = cl[2];
+
+	}
+}
+
+
+void RB_CalcVertLights( unsigned char *colors )
+{
+	RB_VertLightsPerVert( colors ); 
+}
+
+
 
 
 // leilei celsperiment
@@ -2065,8 +2348,237 @@ void RB_CalcFlatDirect( unsigned char *colors )
 
 
 
+#define 	MAXFRESLIGHTS 	512
+
+/*
+** RB_CalcMaterialColor
+**
+** leilei - for more control on diffuse/ambient/emiss/specular colors rather than diffuse only. Possibly could use some SIMD magic here
+*/
+
+static void RB_CalcMaterialColor( unsigned char *colors, int maxl, int ambient, int diffuse, int specular, int emissive, int spechard, int alpha )
+{
+	int				i, j, l;
+	float			*v, *normal;
+	trRefEntity_t	*ent;
+	vec3_t			ambientLight;
+	int			numVertexes;
+	vec3_t			lorigin;
+
+	vec3_t			matAmb, matDif, matSpec, matEmis;
+	float			matHard = spechard / 128.0f;
+	int		specenabled = 0;
 
 
+	if (spechard == 128)
+		matHard = 1;
+
+	if (specular)
+		specenabled = 1;
+
+	// Parse material colors
+
+	matAmb[0] = ((ambient >> 16) & 0xFF);
+	matAmb[1] = ((ambient >> 8 ) & 0xFF);
+	matAmb[2] = (ambient & 0xFF);
+
+	matDif[0] = ((diffuse >> 16) & 0xFF);
+	matDif[1] = ((diffuse >> 8 ) & 0xFF);
+	matDif[2] = (diffuse & 0xFF);
+
+	matSpec[0] = ((specular >> 16) & 0xFF);
+	matSpec[1] = ((specular >> 8 ) & 0xFF);
+	matSpec[2] = (specular & 0xFF);
+
+	matEmis[0] = (emissive >> 16) & 0xFF;
+	matEmis[1] = (emissive >> 8 ) & 0xFF;
+	matEmis[2] = emissive & 0xFF;
+
+	VectorNormalize( matAmb );
+	VectorNormalize( matDif );
+	VectorNormalize( matSpec );
+	VectorNormalize( matEmis );
+
+	// Overbright clamp
+
+	matEmis[0] *= tr.identityLight;
+	matEmis[1] *= tr.identityLight;
+	matEmis[2] *= tr.identityLight;
+
+	// setup ent
+
+	ent = backEnd.currentEntity;
+
+	if ( ent->e.renderfx & RF_LIGHTING_ORIGIN ) 
+		VectorCopy( ent->e.lightingOrigin, lorigin );
+	else
+		VectorCopy( ent->e.origin, lorigin );
+
+
+	VectorCopy( ent->ambientLight, ambientLight );
+
+	int		liteOn[maxl];
+	vec3_t		liteOrg[maxl];
+	vec3_t		liteCol[maxl];
+	int		active = 1;
+
+	if (maxl > MAXFRESLIGHTS) maxl = MAXFRESLIGHTS;
+
+	// first light is always the world
+	liteOn[0] = 1;
+	VectorCopy( ent->directedLight, liteCol[0] );
+	VectorCopy( ent->lightDir, liteOrg[0] );
+
+	ambientLight[0] *= matAmb[0]*2;
+	ambientLight[1] *= matAmb[1]*2;
+	ambientLight[2] *= matAmb[2]*2;
+
+	
+
+	if (maxl>1)
+	{
+		// add dynamic lights
+		{
+			dlight_t		*l;
+
+			for (i=0 ; i<backEnd.refdef.num_dlights ; i++, l++) {
+
+				if (active>maxl)
+				continue;
+
+				l = &backEnd.refdef.dlights[i];
+
+				VectorCopy( l->color, liteCol[active] );
+
+				VectorSubtract( l->origin, lorigin, liteOrg[active] );
+
+				// attenuation
+				float d = VectorNormalize( liteOrg[active] );
+				float power = 16 * ( l->radius );
+				power = power / ( d * d );
+				if (power < 0) power = 0;
+				if (power > 1) power = 1;	// needed to prevent powerup light overflow, as quad/flagcarriers players should not glow themselves
+
+				// transform
+				liteOrg[active][0] = DotProduct( liteOrg[active], ent->e.axis[0] );
+				liteOrg[active][1] = DotProduct( liteOrg[active], ent->e.axis[1] );
+				liteOrg[active][2] = DotProduct( liteOrg[active], ent->e.axis[2] );
+
+				liteCol[active][0] *= (255 * power);
+				liteCol[active][1] *= (255 * power);
+				liteCol[active][2] *= (255 * power);
+
+				liteOn[active] = 1;
+				active++;
+	
+			}
+		}
+	}
+
+
+	// Set up our model
+	v = tess.xyz[0];
+	normal = tess.normal[0];
+
+	numVertexes = tess.numVertexes;
+
+
+	for (i = 0 ; i < numVertexes ; i++, v += 4, normal += 4) {
+		vec3_t difs;
+		vec3_t specs;
+
+		// clear
+		difs[0] 	= difs[1] 	= difs[2] = 0;
+		specs[0] 	= specs[1] 	= specs[2] = 0;
+
+		// HACK - Fix the world light
+		VectorCopy( ent->lightDir, liteOrg[0] );
+
+		// go through lights and add them
+		for (l=0;l<active;l++)
+		{
+			vec3_t reflected, viewer;
+			float al;		
+			float b, c;
+			float ilength = Q_rsqrt( DotProduct( liteOrg[l], liteOrg[l] ) );
+			if (!liteOn[l])
+				continue;
+			// calculate the specular color
+			float d = DotProduct (normal, liteOrg[l]);
+			c = d; // get the diffuse
+
+			if (specenabled)
+			{
+				d *= ilength;
+				reflected[0] = normal[0]*2*d - liteOrg[l][0];
+				reflected[1] = normal[1]*2*d - liteOrg[l][1];
+				reflected[2] = normal[2]*2*d - liteOrg[l][2];
+	
+				VectorSubtract (backEnd.or.viewOrigin, v, viewer);
+				ilength = Q_rsqrt( DotProduct( viewer, viewer ) );
+				al = DotProduct (reflected, viewer);
+				al *= ilength;
+		
+				// TODO: Metallic surface property option?
+				//al *= (al);
+				
+				if (al < 0) {
+					b = 0;
+				} else {
+					if (matHard != 1){
+					al *= (al*matHard);
+					al *= (al*matHard);
+					}
+					b = al;
+					if (b > 1) {
+						b = 1;
+					}
+				}
+	
+				specs[0] += b * liteCol[l][0];
+				specs[1] += b * liteCol[l][1];
+				specs[2] += b * liteCol[l][2];
+			}
+	
+			if (c<0) c=0;
+			if (c>255) c=255;
+			if (liteOn[l] != 2){
+			difs[0] += c * liteCol[l][0];
+			difs[1] += c * liteCol[l][1];
+			difs[2] += c * liteCol[l][2];
+			}
+			
+		}
+
+		// Add Ambient and CLAMP
+		j = ri.ftol(ambientLight[0] + (difs[0] * matDif[0]) + (specs[0] * matSpec[0]));
+		if ( j > 255 ) {
+			j = 255;
+		}
+		colors[i*4+0] = j;
+
+		j = ri.ftol(ambientLight[1] + (difs[1] * matDif[1]) + (specs[1] * matSpec[1]));
+		if ( j > 255 ) {
+			j = 255;
+		}
+		colors[i*4+1] = j;
+
+		j = ri.ftol(ambientLight[2] + (difs[2] * matDif[2]) + (specs[2] * matSpec[2]));
+		if ( j > 255 ) {
+			j = 255;
+		}
+		colors[i*4+2] = j;
+
+		colors[i*4+3] = alpha;
+	}
+}
+
+void RB_CalcMaterials( unsigned char *colors, int ambient, int diffuse, int specular, int emissive, int spechard, int alpha )
+{
+	// TODO: Low detail materials
+	RB_CalcMaterialColor( colors, 1, ambient, diffuse, specular, emissive, spechard, alpha );
+
+}
 
 
 

@@ -807,6 +807,7 @@ static void ProjectDlightTexture( void ) {
 		return;
 	}
 #endif
+	if ( !r_vertexLight->integer ) 
 	ProjectDlightTexture_scalar();
 }
 
@@ -944,35 +945,10 @@ static void ComputeColors( shaderStage_t *pStage )
 				}
 			}
 			break;
-		case CGEN_VERTEX_LIT:		// leilei - mixing vertex colors with lighting through a glorious light hack
-			{			// 	    should only be used for entity models, not map assets!
-			vec3_t	dcolor, acolor;	// to save the color from actual light
-			vec3_t	vcolor;
-			int y;
-
-
-			// Backup our colors
-			VectorCopy( backEnd.currentEntity->ambientLight, acolor );			
-			VectorCopy( backEnd.currentEntity->directedLight, dcolor );			
-			VectorCopy( backEnd.currentEntity->e.shaderRGBA, vcolor );			
-
-			// Make our vertex color take over 
-
-			for(y=0;y<3;y++){
-				backEnd.currentEntity->ambientLight[y] 	*= (vcolor[y] / 255);
-
-				if (backEnd.currentEntity->ambientLight[y] < 1)   backEnd.currentEntity->ambientLight[y] = 1; // black!!!
-				if (backEnd.currentEntity->ambientLight[y] > 255) backEnd.currentEntity->ambientLight[y] = 255; // white!!!!!
-			//	backEnd.currentEntity->ambientLight[y] 	*= (vcolor[y] / 255);
-			//	backEnd.currentEntity->directedLight[y] *= (vcolor[y] / 255);
-			}
-		
-			// run it through our favorite preferred lighting calculation functions
-			RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
-
-			// Restore light color for any other stage that doesn't do it
-			VectorCopy( acolor, backEnd.currentEntity->ambientLight);			
-			VectorCopy( dcolor, backEnd.currentEntity->directedLight);			
+		case CGEN_VERTEX_LIT:		// leilei - for world only
+			{			 	    
+				Com_Memcpy( tess.svars.colors, tess.vertexColors, tess.numVertexes * sizeof( tess.vertexColors[0] ) );
+				RB_CalcVertLights(  ( unsigned char * ) tess.svars.colors  );			
 			}
 			break;
 		case CGEN_ONE_MINUS_VERTEX:
@@ -1031,42 +1007,14 @@ static void ComputeColors( shaderStage_t *pStage )
 				}
 			}
 			break;
-	}
-
-	// leilei PowerVR Hack
-
-	if (r_parseStageSimple->integer)
-		{
-			float scale;
-			vec3_t normme;
-			if ((pStage->isBlend == 1) || (pStage->isBlend == 3)){ // additive or subtracive
-				
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][3] = scale - tess.svars.colors[i][3];
-					if (tess.svars.colors[i][3] > 255) tess.svars.colors[i][3] = 255;
-
-
-					normme[0] = tess.svars.colors[i][0];
-					normme[1] = tess.svars.colors[i][1];
-					normme[2] = tess.svars.colors[i][2];
-
-				//	normme[0] *= (4 * tr.identityLight);
-				//	normme[1] *= (4 * tr.identityLight);
-				//	normme[2] *= (4 * tr.identityLight);
-
-
-					VectorNormalize(normme);
-
-
-					tess.svars.colors[i][0] = normme[0]*255;
-					tess.svars.colors[i][1] = normme[1]*255;
-					tess.svars.colors[i][2] = normme[2]*255;
-				}
+		case CGEN_MATERIAL:
+			if (r_shownormals->integer > 1 || (pStage->isLeiShade)){
+				RB_CalcNormal( ( unsigned char * ) tess.svars.colors ); // leilei - debug normals, or use the normals as a color for a lighting shader
+				break;
 			}
-
-		}
+			RB_CalcMaterials( ( unsigned char * ) tess.svars.colors,  pStage->matAmb, pStage->matDif, pStage->matSpec, pStage->matEmis, pStage->matHard, pStage->matAlpha  );
+			break;
+	}
 
 	//
 	// alphaGen
@@ -1154,6 +1102,34 @@ static void ComputeColors( shaderStage_t *pStage )
 	}
 
 	//
+	// rgbMod
+	//
+	switch ( pStage->rgbMod )
+	{
+		case CMOD_GLOW:
+			RB_CalcGlowBlend( ( unsigned char * ) tess.svars.colors, pStage->rgbModCol, pStage->rgbModMode );
+			break;
+		case CMOD_UVCOL:
+			RB_CalcUVColor( ( unsigned char * ) tess.svars.colors, pStage->rgbModCol, pStage->rgbModMode );
+			break;
+		case CMOD_NORMALIZETOALPHA:
+			RB_CalcNormalizeToAlpha( ( unsigned char * ) tess.svars.colors );
+			break;
+		case CMOD_NORMALIZETOALPHAFAST: // TODO: use first vert
+			RB_CalcNormalizeToAlpha( ( unsigned char * ) tess.svars.colors );
+			break;
+		case CMOD_OPAQUE:
+			for ( i = 0; i < tess.numVertexes; i++ ) 
+				tess.svars.colors[i][3] = 0xff;
+			break;
+		case CMOD_LIGHTING:
+			// TODO
+			break;
+		case CMOD_BAD:
+			return;
+	}
+
+	//
 	// fog adjustment for colors to fade out as fog increases
 	//
 	if ( tess.fogNum )
@@ -1197,6 +1173,43 @@ static void ComputeColors( shaderStage_t *pStage )
 		}
 	}
 }
+
+
+/*
+===============
+ComputeUVColors
+===============
+*/
+static void ComputeUVColors( shaderStage_t *pStage )
+{
+	int		i;
+	
+	//
+	// rgbMod
+	//
+	switch ( pStage->rgbMod )
+	{
+		case CMOD_GLOW:
+			// we do this elsewhere
+			break;
+		case CMOD_UVCOL:
+			RB_CalcUVColor( ( unsigned char * ) tess.svars.colors, pStage->rgbModCol, pStage->rgbModMode );
+			break;
+		case CMOD_NORMALIZETOALPHA:
+			break;
+		case CMOD_NORMALIZETOALPHAFAST: // TODO: use first vert
+			break;
+		case CMOD_OPAQUE:
+			break;
+		case CMOD_LIGHTING:
+			break;
+		case CMOD_BAD:
+			return;
+	}
+
+
+}
+
 
 /*
 ===============

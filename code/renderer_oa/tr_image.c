@@ -1129,9 +1129,6 @@ static void Upload32( unsigned *data,
 	int		forceBits = 0; 
 
 
-	if (lightMap && r_parseStageSimple->integer) hackoperation = 4;
-
-
 	//
 	// convert to exact power of 2 sizes
 	//

@@ -187,6 +187,7 @@ typedef enum {
 	CGEN_FOG,				// standard fog
 	CGEN_CONST,				// fixed color
 	CGEN_VERTEX_LIT,			// leilei - tess.vertexColors * tr.identityLight * ambientlight*directlight
+	CGEN_MATERIAL,				// leilei - material system
 	CGEN_LIGHTING_DIFFUSE_SPECULAR		// leilei - LIGHTING_DIFFUSE, capped by specular exponent
 } colorGen_t;
 
@@ -264,6 +265,17 @@ typedef enum {
 	TMOD_ROTATE,
 	TMOD_ENTITY_TRANSLATE
 } texMod_t;
+
+// leilei - rgbMod - color modulations
+typedef enum {
+	CMOD_BAD,
+	CMOD_GLOW,
+	CMOD_LIGHTING,
+	CMOD_NORMALIZETOALPHA,
+	CMOD_NORMALIZETOALPHAFAST,
+	CMOD_UVCOL,
+	CMOD_OPAQUE
+} colorMod_t;
 
 #define	MAX_SHADER_DEFORMS	3
 typedef struct {
@@ -360,6 +372,17 @@ typedef struct {
 
 	int			imgWidth;
 	int			imgHeight;		//leilei for glsl shaders
+
+	colorMod_t		rgbMod;			// leilei - rgbMod
+	int			rgbModCol;
+	int			rgbModMode;
+
+	int			matAmb;			// leilei - material ambience
+	int			matDif;			// leilei - material diffuse
+	int			matSpec;		// leilei - material specular
+	int			matEmis;		// leilei - material emissive
+	int			matHard;		// leilei - material specular hardness
+	int			matAlpha;		// leilei - material alpha
 
 } shaderStage_t;
 
@@ -1399,7 +1422,6 @@ extern	cvar_t	*r_flaresMotionBlur;
 //extern	cvar_t	*r_flaresSurfradii;
 
 extern cvar_t	*r_alternateBrightness;		// leilei - alternate brightness
-extern cvar_t	*r_parseStageSimple;	// Leilei - handling textures into alphas
 extern cvar_t	*r_leifx;	// Leilei - leifx nostalgia filter
 extern cvar_t	*r_modelshader;	// Leilei - new model shading
 
@@ -2188,6 +2210,14 @@ void	RB_CalcDiffuseColor_Specular( unsigned char *colors );	// leilei - specular
 void	RB_CalcFlatAmbient( unsigned char *colors ); // leilei - cel hack
 void	RB_CalcFlatDirect( unsigned char *colors ); // leilei - cel hack
 void	RB_CalcNormal( unsigned char *colors ); // leilei - normal hack
+
+void 	RB_CalcGlowBlend( unsigned char *colors, int glowcol, int fx ); // leilei - rgbMod
+void 	RB_CalcUVColor( unsigned char *colors, int glowcol, int fx ); 	// leilei - rgbMod
+void 	RB_CalcNormalizeToAlpha( unsigned char *colors); 		// leilei - rgbMod 
+
+void    RB_CalcMaterials( unsigned char *colors, int ambient, int diffuse, int specular, int emissive, int spechard, int alpha ); // leilei - materials
+
+void	RB_CalcVertLights( unsigned char *colors );	// leilei - dynamic vertex lights
 
 /*
 =============================================================

@@ -34,6 +34,8 @@ cvar_t *s_backend;
 cvar_t *s_muteWhenMinimized;
 cvar_t *s_muteWhenUnfocused;
 
+cvar_t *s_interrupts;
+
 static soundInterface_t si;
 
 /*
@@ -485,6 +487,7 @@ void S_Init( void )
 	s_muted = Cvar_Get("s_muted", "0", CVAR_ROM);
 	s_doppler = Cvar_Get( "s_doppler", "1", CVAR_ARCHIVE );
 	s_backend = Cvar_Get( "s_backend", "", CVAR_ROM );
+	s_interrupts = Cvar_Get( "s_interrupts", "0", CVAR_ARCHIVE ); // leilei - pre-1.25 sound behavior
 	s_muteWhenMinimized = Cvar_Get( "s_muteWhenMinimized", "0", CVAR_ARCHIVE );
 	s_muteWhenUnfocused = Cvar_Get( "s_muteWhenUnfocused", "0", CVAR_ARCHIVE );
 
