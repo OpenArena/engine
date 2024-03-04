@@ -1,0 +1,7 @@
+# Compiles with ASan (https://github.com/google/sanitizers/wiki/AddressSanitizer)
+# How to use:
+# cp Makefile.local.asan Makefile.local && make
+CC=clang
+CFLAGS+=-fsanitize=address
+CFLAGS+=-g
+CFLAGS+=-fsanitize-blacklist=asan_ignore.txt
