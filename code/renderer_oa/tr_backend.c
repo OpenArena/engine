@@ -1456,11 +1456,6 @@ const void *RB_ClearDepth(const void *data)
 	return (const void *)(cmd + 1);
 }
 
-
-extern cvar_t	*r_slowness;  // leilei - experimental variable slowness
-extern cvar_t	*r_slowness_cpu;  // leilei - experimental variable slowness
-extern cvar_t	*r_slowness_gpu;  // leilei - experimental variable slowness
-
 // leilei - motion blur hack
 float		motiontime;
 float		motion_finished;
@@ -1647,12 +1642,6 @@ const void	*RB_SwapBuffers( const void *data ) {
 
 	R_BrightScreen();		// leilei - alternate brightness - do it here so we hit evereything that represents our video buffer
 
-	R_RetroAAScreen();		// leilei - then apply 'anti aliasing' (hint: IT'S NOT really antialiasing)
-	R_PaletteScreen();		// leilei - then we palette our overbrighted antialiased screen.
-	R_NTSCScreen();			// leilei - then we get it through a DAC, degrading our precious VGA signals 
-	R_TVScreen();			// leilei - tv operation comes last, this is a SCREEN
-
-
 	cmd = (const swapBuffersCommand_t *)data;
 
 	// we measure overdraw by reading back the stencil buffer and
@@ -1707,33 +1696,6 @@ const void	*RB_SwapBuffers( const void *data ) {
 	backEnd.doneFlareTests = qfalse;
 	backEnd.flareTestTime = backEnd.refdef.time + 100.0f;
 	}
-
-	// leilei - artificial slowness (mapper debug) - this might be windows only
-#ifdef _WIN32
-
-	if (r_slowness->integer > 2){
-		// Should be roughly equiv to a P2 300 at value 1.0 (target system)
-		float cpuspeed = r_slowness_cpu->value;
-		float gpuspeed = r_slowness_gpu->value;
-
-		if (cpuspeed < 1) cpuspeed = 1;
-		if (gpuspeed < 1) gpuspeed = 1;	// avoid div0
-
-		float slowit = (float)(((float)(backEnd.pc.c_surfaces) / 16) + ((float)backEnd.pc.c_vertexes / 64) + 5400.0f);
-		slowit /= cpuspeed;	// yeah it's the cpu
-		float blowit = ((float)(backEnd.pc.c_surfaces / 32) + (backEnd.pc.c_indexes / 1324 * (float)(glConfig.vidWidth * glConfig.vidHeight / 1100)));
-		blowit /= gpuspeed;	// yeah it's the gpu
-
-		if (blowit > slowit) 			slowit = blowit; // GPU bottleneck
-		else if (slowit > blowit) 		blowit = slowit; // CPU bottlebeck
-
-		if (slowit > 8500) slowit = 8500; // but not too much?
-			Sleep(slowit); // FORCE A SLEEP!! HAHAHAHA!!!
-
-		}
-#endif
-
-
 	
 	time_last =  backEnd.refdef.time;
 	return (const void *)(cmd + 1);

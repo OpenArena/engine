@@ -225,10 +225,6 @@ cvar_t	*r_suggestiveThemes;		// leilei - mature content control
 //cvar_t	*r_motionblur;		// Leilei - motionblur
 cvar_t	*r_motionblur_fps;		// Leilei - motionblur framerated
 
-cvar_t	*r_slowness;		// Leilei - the cvar that slows everything down. use with caution.
-cvar_t	*r_slowness_cpu;		// Leilei
-cvar_t	*r_slowness_gpu;		// Leilei
-
 cvar_t	*r_textureDither;	// leilei - Dithered texture
 
 cvar_t	*r_texdump;		// Leilei - debug - texture dump as they load, players should never need to use this!
@@ -1346,9 +1342,6 @@ void R_Register( void )
 	r_leidebug = ri.Cvar_Get( "r_leidebug", "0" , CVAR_CHEAT);
 	r_particles = ri.Cvar_Get( "r_particles", "0" , CVAR_ARCHIVE | CVAR_LATCH);
 	r_leidebugeye = ri.Cvar_Get( "r_leidebugeye", "0" , CVAR_CHEAT);
-	r_slowness = ri.Cvar_Get( "r_slowness", "0" , CVAR_ARCHIVE);	// it's 0 because you want it to be the fastest possible by default.
-	r_slowness_cpu = ri.Cvar_Get( "r_slowness_cpu", "300" , CVAR_ARCHIVE);	// it's 0 because you want it to be the fastest possible by default.
-	r_slowness_gpu = ri.Cvar_Get( "r_slowness_gpu", "96" , CVAR_ARCHIVE);	// it's 0 because you want it to be the fastest possible by default.
 
 	r_iconmip = ri.Cvar_Get ("r_iconmip", "0", CVAR_ARCHIVE | CVAR_LATCH );		// leilei - icon mip
 	r_iconBits = ri.Cvar_Get ("r_iconBits", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - icon bits
