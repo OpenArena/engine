@@ -213,18 +213,18 @@ void R_InitPalette( void ) {
 
 	byte           *buff;
 	int i, v;
-	ri.Printf( PRINT_ALL, "INIT PALETTE......\n");
+	ri.Printf( PRINT_ALL, "R_InitPalette: \n");
 
 	ri.FS_ReadFile("gfx/palette.lmp", (void **)&buff);
 	if(!buff){
-		ri.Printf( PRINT_ALL, "PALLETE FALED :(!\n" );
+		ri.Printf( PRINT_ALL, "PALETTE FAILED\n" );
 		paletteavailable = 0;	// Don't have a palette
 		paletteenabled   = 0;	// Don't do 8-bit textures
 		return;
 	}
 
 	palettemain = buff;
-	ri.Printf( PRINT_ALL, "PALETTE LOADDEEEED!!!!!!!!!!!!1\n" );
+	ri.Printf( PRINT_ALL, "PALETTE LOADED\n" );
 	paletteavailable = 1;	// Do have a palette
 
 	if (palettedTextureSupport) {

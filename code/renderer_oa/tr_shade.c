@@ -1481,11 +1481,6 @@ void GLSL_Feeder(shaderStage_t *pStage, shaderCommands_t *input)
 		R_BindAnimatedImage(&pStage->bundle[7]);
 	}
 
-	if (program->u_mpass1 > -1 && pStage->bundle[1].image[0]) {	GL_SelectTexture(11);	qglEnable(GL_TEXTURE_2D);	R_BindAnimatedImage(&pStage->bundle[11]);}
-	if (program->u_mpass2 > -1 && pStage->bundle[1].image[0]) {	GL_SelectTexture(12);	qglEnable(GL_TEXTURE_2D);	R_BindAnimatedImage(&pStage->bundle[12]);}
-	if (program->u_mpass3 > -1 && pStage->bundle[1].image[0]) {	GL_SelectTexture(13);	qglEnable(GL_TEXTURE_2D);	R_BindAnimatedImage(&pStage->bundle[13]);}
-	if (program->u_mpass4 > -1 && pStage->bundle[1].image[0]) {	GL_SelectTexture(14);	qglEnable(GL_TEXTURE_2D);	R_BindAnimatedImage(&pStage->bundle[14]);}
-
 	/* time */
 	if (program->u_Time > -1)
 		R_GLSL_SetUniform_Time(program, input->shaderTime);
@@ -1501,11 +1496,6 @@ void GLSL_Clean(void)
 {
 	glslProgram_t	*program;
 	program = tr.programs[glState.currentProgram];
-
-	if (program->u_mpass1 > -1) {	GL_SelectTexture(11);	qglDisable(GL_TEXTURE_2D); }
-	if (program->u_mpass2 > -1) {	GL_SelectTexture(12);	qglDisable(GL_TEXTURE_2D); }
-	if (program->u_mpass3 > -1) {	GL_SelectTexture(13);	qglDisable(GL_TEXTURE_2D); }
-	if (program->u_mpass4 > -1) {	GL_SelectTexture(14);	qglDisable(GL_TEXTURE_2D); }
 	
 	/* disable texture unit 7 */
 	if (program->u_Texture7 > -1)

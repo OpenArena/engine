@@ -134,9 +134,6 @@ static glslProgram_t *R_GLSL_AllocProgram(void) {
 	program->u_ScreenToNextPixelX			= -1;
 	program->u_ScreenToNextPixelY			= -1;
 	program->u_zFar							= -1;
-	program->u_MotionBlurX			= -1;
-	program->u_MotionBlurY			= -1;
-	program->u_mpasses			= -1;
 	program->u_CC_Brightness		= -1;	
 	program->u_CC_Gamma			= -1;
 	program->u_CC_Overbright		= -1;
@@ -194,8 +191,6 @@ static void R_GLSL_ParseProgram(glslProgram_t *program, char *_text) {
 					program->u_ActualScreenSizeX = qglGetUniformLocationARB(program->program, "u_ActualScreenSizeX");
 				}  else if (!Q_stricmp(token, "u_ActualScreenSizeY;")) {
 					program->u_ActualScreenSizeY = qglGetUniformLocationARB(program->program, "u_ActualScreenSizeY");
-				}  else if (!Q_stricmp(token, "u_mpasses;")) {
-					program->u_mpasses = qglGetUniformLocationARB(program->program, "u_mpasses");
 				} else {
 					ri.Printf(PRINT_WARNING, "WARNING: uniform int %s unrecognized in program %s\n", token, program->name);
 				}
@@ -213,10 +208,6 @@ static void R_GLSL_ParseProgram(glslProgram_t *program, char *_text) {
 					program->u_ScreenToNextPixelY = qglGetUniformLocationARB(program->program, "u_ScreenToNextPixelY");
 				}  else if (!Q_stricmp(token, "u_zFar;")) {
 					program->u_zFar = qglGetUniformLocationARB(program->program, "u_zFar");
-				}  else if (!Q_stricmp(token, "u_MotionBlurX;")) {
-					program->u_MotionBlurX = qglGetUniformLocationARB(program->program, "u_MotionBlurX");
-				}  else if (!Q_stricmp(token, "u_MotionBlurY;")) {
-					program->u_MotionBlurY = qglGetUniformLocationARB(program->program, "u_MotionBlurY");
 				}  else if (!Q_stricmp(token, "u_CC_Brightness;")) {
 					program->u_CC_Brightness = qglGetUniformLocationARB(program->program, "u_CC_Brightness");
 				}  else if (!Q_stricmp(token, "u_CC_Overbright;")) {
@@ -4867,19 +4858,9 @@ shader_t *R_FindShaderReal( const char *name, int lightmapIndex, qboolean mipRaw
 	return FinishShader();
 }
 
-// leilei - rather stupid way to do a cel wrapper to work for all textures
 shader_t *R_FindShader( const char *name, int lightmapIndex, qboolean mipRawImage ) {
 		shader_t	*sh;		
 		shader_t	*ahsh;	
-
-/*			// Sadly, I have deprecated the old cel hack. I am leaving it here. It breaks 2D textures BTW!!! :(
-	if (r_anime->integer){
-		sh = R_FindShaderReal(va("%s_cel",name), lightmapIndex, mipRawImage);
-		if ( sh->defaultShader )
-		sh = R_FindShaderReal(name, lightmapIndex, mipRawImage);
-		return sh;
-	}
-	else*/
 
 	// load real shader first?
 	sh = R_FindShaderReal(name, lightmapIndex, mipRawImage);

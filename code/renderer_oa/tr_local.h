@@ -86,8 +86,6 @@ typedef struct {
 	vec3_t		axis[3];		// orientation in world
 	vec3_t		viewOrigin;		// viewParms->or.origin in local coordinates
 	float		modelMatrix[16];
-	vec3_t		viewOriginOld;		// leilei - motionBlur
-	vec3_t		viewOriginOlder;		// leilei - motionBlur
 } orientationr_t;
 
 //===============================================================================
@@ -931,22 +929,6 @@ typedef struct {
 	GLint			u_ActualScreenSizeX;
 	GLint			u_ActualScreenSizeY;
 
-// leilei - motion blur vars
-
-	GLfloat			u_MotionBlurX;// OBSOLETE
-	GLfloat			u_MotionBlurY;// OBSOLETE
-
-	GLint			u_ViewMotion;// OBSOLETE
-	vec3_t			v_ViewMotion;// OBSOLETE
-
-	GLint			u_mpass1;	// 1-5
-	GLint			u_mpass2;	// 6-10
-	GLint			u_mpass3;	// 11-15
-	GLint			u_mpass4;	// 16-20
-
-	GLint			u_mpasses;	// How many passes of Motion do we have anyhow?
-
-
 // leilei - 'compatibility' with ruby shader vars (HACK HACK HACK)
 
 	GLint			rubyInputSize;
@@ -1121,17 +1103,11 @@ typedef struct {
 	qboolean	doneBloom;		// done bloom this frame
 	qboolean	donepostproc;		// done postprocess this frame
 	qboolean	doneleifx;		// leilei - done leifxing this frame
-	qboolean	doneanime;		// leilei - done animeing this frame
 	qboolean	doneAltBrightness;	// leilei - done alternate brightness this frame
-	qboolean	doneFilm;		// leilei - done film filtering this frame
 	qboolean	doneSun;		// leilei - done drawing a sun
 	qboolean	doneSunFlare;		// leilei - done drawing a sun flare
-	qboolean	donemblur;		// leilei - done motionblur this frame
 	qboolean	donewater;		// leilei - done water this frame
-	qboolean	donetv;		// leilei - tv this frame
-	qboolean	doneraa;	// leilei - done aa'ing this frame
-	qboolean	donentsc;	// leilei - done ntsc'ing this frame
-	qboolean	donepalette;		// leilei - done animeing this frame
+	qboolean	donepalette;		// leilei - done paletting this frame
 	qboolean	doneSurfaces;   // done any 3d surfaces already
 	qboolean	doneParticles;   // done any particle movement
 	qboolean	doneFlareTests;		// leilei - done testing flares
@@ -1190,16 +1166,7 @@ typedef struct {
 	qhandle_t				leiFXDitherProgram;	// leilei
 	qhandle_t				leiFXGammaProgram;	// leilei
 	qhandle_t				leiFXFilterProgram;	// leilei
-	qhandle_t				animeProgram;	// leilei
-	qhandle_t				animeFilmProgram;	// leilei
-	qhandle_t				motionBlurProgram;	// leilei
-	qhandle_t				motionBlurPostProgram;	// leilei
 	qhandle_t				BrightnessProgram;	// leilei
-	qhandle_t				CRTProgram;	// leilei
-	qhandle_t				NTSCEncodeProgram;	// leilei
-	qhandle_t				NTSCDecodeProgram;	// leilei
-	qhandle_t				NTSCBleedProgram;	// leilei
-	qhandle_t				paletteProgram;	// leilei
 
 	int						numPrograms;
 	glslProgram_t			*programs[MAX_PROGRAMS];
@@ -1418,30 +1385,13 @@ extern	cvar_t	*r_flaresDlightFade;
 extern	cvar_t	*r_flaresDlightOpacity;
 extern	cvar_t	*r_flaresDlightScale;
 
-extern	cvar_t	*r_flaresMotionBlur;
-//extern	cvar_t	*r_flaresSurfradii;
-
 extern cvar_t	*r_alternateBrightness;		// leilei - alternate brightness
 extern cvar_t	*r_leifx;	// Leilei - leifx nostalgia filter
 extern cvar_t	*r_modelshader;	// Leilei - new model shading
 
 
-extern cvar_t	*r_ntsc;	// Leilei - ntsc
-
-extern cvar_t	*r_tvMode;	// Leilei - tv faking mode
-extern cvar_t	*r_tvModeForceAspect;	// Leilei - retain aspect of the tv's mode
-extern cvar_t	*r_tvFilter;	// Leilei - filter to use
-
-
-extern cvar_t	*r_retroAA;	// Leilei - old console anti aliasing
-
 extern cvar_t	*r_suggestiveThemes;	// Leilei - mature content
 
-extern cvar_t	*r_motionblur;		// Leilei - motionblur
-extern cvar_t	*r_motionblur_fps;		// Leilei - motionblur framerated
-
-extern cvar_t	*r_anime;	// Leilei - anime filter
-extern cvar_t	*r_palletize;	// Leilei - anime filter
 extern cvar_t	*r_leidebug;	// Leilei - debug only!
 extern cvar_t	*r_leidebugeye;	// Leilei - debug only!
 extern cvar_t	*r_particles;	// Leilei - particles!
@@ -1941,14 +1891,6 @@ static ID_INLINE void R_GLSL_SetUniform_u_zFar(glslProgram_t *program, GLfloat v
 	qglUniform1fARB(program->u_zFar, value);
 }
 
-static ID_INLINE void R_GLSL_SetUniform_u_MotionBlurX(glslProgram_t *program, GLfloat value) {
-	qglUniform1fARB(program->u_MotionBlurX, value);
-}
-
-static ID_INLINE void R_GLSL_SetUniform_u_MotionBlurY(glslProgram_t *program, GLfloat value) {
-	qglUniform1fARB(program->u_MotionBlurY, value);
-}
-
 
 static ID_INLINE void R_GLSL_SetUniform_u_CC_Brightness(glslProgram_t *program, GLfloat value) {
 	qglUniform1fARB(program->u_CC_Brightness, value);
@@ -1974,10 +1916,6 @@ static ID_INLINE void R_GLSL_SetUniform_u_CC_Overbright(glslProgram_t *program, 
 	qglUniform1fARB(program->u_CC_Overbright, value);
 }
 
-
-static ID_INLINE void R_GLSL_SetUniform_u_mpasses(glslProgram_t *program, GLint value) {
-	qglUniform1iARB(program->u_mpasses, value);
-}
 
 static ID_INLINE void R_GLSL_SetUniform_u_ActualScreenSizeX(glslProgram_t *program, GLint value) {
 	qglUniform1iARB(program->u_ActualScreenSizeX, value);
@@ -2013,13 +1951,6 @@ static ID_INLINE void R_GLSL_SetUniform_rubyOutputSize(glslProgram_t *program, c
 //	program->v_rubyOutputSize[1] = valub;
 //	qglUniform3fARB(program->rubyOutputSize, value, valub, 1.0);
 }
-
-
-
-static ID_INLINE void R_GLSL_SetUniform_Mpass1(glslProgram_t *program, GLint value) {qglUniform1iARB(program->u_mpass1, value);}
-static ID_INLINE void R_GLSL_SetUniform_Mpass2(glslProgram_t *program, GLint value) {qglUniform1iARB(program->u_mpass2, value);}
-static ID_INLINE void R_GLSL_SetUniform_Mpass3(glslProgram_t *program, GLint value) {qglUniform1iARB(program->u_mpass3, value);}
-static ID_INLINE void R_GLSL_SetUniform_Mpass4(glslProgram_t *program, GLint value) {qglUniform1iARB(program->u_mpass4, value);}
 
 void R_GLSL_Init(void);
 qhandle_t RE_GLSL_RegisterProgram(const char *name, const char *programVertexObjects, int numVertexObjects, const char *programFragmentObjects, int numFragmentObjects);
@@ -2380,8 +2311,6 @@ void R_BloomInit( void );
 void R_WaterInit( void );
 void R_BloomScreen( void );
 void R_WaterScreen( void );
-void R_AnimeScreen( void );
-void R_NTSCScreen( void );
 void R_PaletteScreen( void );
 // Postprocessing
 void R_PostprocessScreen( void );
@@ -2390,13 +2319,9 @@ void R_PostprocessingInit(void);
 // leilei
 void R_BrightScreen( void );
 void R_AltBrightnessInit( void );
-void R_FilmScreen( void );	//	leilei - film effect
 extern int softwaremode;
 extern int leifxmode;
 extern int voodootype; // 0 - none 1 - Voodoo Graphics 2 - Voodoo2, 3 - Voodoo Banshee/3, 4 - Voodoo4/5
-
-void RB_UpdateMotionBlur (void);
-void R_MotionBlur_BackupScreen(int which);
 
 void R_AddParticles (void);
 void R_RenderParticles (void);
