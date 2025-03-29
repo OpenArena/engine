@@ -124,6 +124,8 @@ cvar_t  *cl_consoleType;
 cvar_t  *cl_consoleColor[4];
 
 cvar_t *cl_consoleHeight;
+cvar_t  *cl_consoleAccent;	// leilei - change version and line color
+cvar_t  *cl_consoleScale;	// leilei - scale the console
 
 clientActive_t		cl;
 clientConnection_t	clc;
@@ -3115,6 +3117,11 @@ void CL_InitRenderer( void ) {
 	cls.charSetShader = re.RegisterShader( "gfx/2d/bigchars" );
 	cls.whiteShader = re.RegisterShader( "white" );
 	cls.consoleShader = re.RegisterShader( "console" );
+	if (!cls.consoleShader) // leilei - fallback console type if it fails 
+		{
+			Cvar_Set("cl_consoleType", "2");
+			Com_Printf( "Console shader failed to load, falling back to simple console\n");
+		}
 	g_console_field_width = cls.glconfig.vidWidth / SMALLCHAR_WIDTH - 2;
 	g_consoleField.widthInChars = g_console_field_width;
 }
@@ -3552,12 +3559,14 @@ void CL_Init( void ) {
 	cl_consoleKeys = Cvar_Get( "cl_consoleKeys", "~ ` 0x7e 0x60", CVAR_ARCHIVE);
 
 	cl_consoleType = Cvar_Get( "cl_consoleType", "0", CVAR_ARCHIVE );
-	cl_consoleColor[0] = Cvar_Get( "cl_consoleColorRed", "1", CVAR_ARCHIVE );
-	cl_consoleColor[1] = Cvar_Get( "cl_consoleColorGreen", "0", CVAR_ARCHIVE );
-	cl_consoleColor[2] = Cvar_Get( "cl_consoleColorBlue", "0", CVAR_ARCHIVE );
+	cl_consoleColor[0] = Cvar_Get( "cl_consoleColorRed", "0.104", CVAR_ARCHIVE );
+	cl_consoleColor[1] = Cvar_Get( "cl_consoleColorGreen", "0.187", CVAR_ARCHIVE );
+	cl_consoleColor[2] = Cvar_Get( "cl_consoleColorBlue", "0.312", CVAR_ARCHIVE );
 	cl_consoleColor[3] = Cvar_Get( "cl_consoleColorAlpha", "0.8", CVAR_ARCHIVE );
 
 	cl_consoleHeight = Cvar_Get("cl_consoleHeight", "0.5", CVAR_ARCHIVE);
+	cl_consoleAccent = Cvar_Get("cl_consoleAccent", "61" , CVAR_ARCHIVE);  // leilei - change version and scroll color
+	cl_consoleScale = Cvar_Get ("cl_consoleScale" , "1"  , CVAR_ARCHIVE);  // leilei - console/notify text scale
 
 	// userinfo
 	Cvar_Get ("name", "UnnamedPlayer", CVAR_USERINFO | CVAR_ARCHIVE );
@@ -3567,8 +3576,8 @@ void CL_Init( void ) {
 	Cvar_Get ("headmodel", "sarge", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get ("team_model", "james", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get ("team_headmodel", "*james", CVAR_USERINFO | CVAR_ARCHIVE );
-	Cvar_Get ("g_redTeam", "Stroggs", CVAR_SERVERINFO | CVAR_ARCHIVE);
-	Cvar_Get ("g_blueTeam", "Pagans", CVAR_SERVERINFO | CVAR_ARCHIVE);
+	Cvar_Get ("g_redTeam", "Red", CVAR_SERVERINFO | CVAR_ARCHIVE);
+	Cvar_Get ("g_blueTeam", "Blue", CVAR_SERVERINFO | CVAR_ARCHIVE);
 	Cvar_Get ("color1",  "4", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get ("color2", "5", CVAR_USERINFO | CVAR_ARCHIVE );
 	Cvar_Get ("handicap", "100", CVAR_USERINFO | CVAR_ARCHIVE );
