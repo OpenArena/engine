@@ -241,6 +241,8 @@ extern short *sfxScratchBuffer;
 extern sfx_t *sfxScratchPointer;
 extern int	   sfxScratchIndex;
 
+extern cvar_t *s_xmp_startPattern;
+
 qboolean S_Base_Init( soundInterface_t *si );
 
 // OpenAL stuff

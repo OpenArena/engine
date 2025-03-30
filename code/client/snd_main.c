@@ -35,6 +35,7 @@ cvar_t *s_muteWhenMinimized;
 cvar_t *s_muteWhenUnfocused;
 
 cvar_t *s_interrupts;
+cvar_t *s_xmp_startPattern;
 
 static soundInterface_t si;
 
@@ -490,7 +491,7 @@ void S_Init( void )
 	s_interrupts = Cvar_Get( "s_interrupts", "0", CVAR_ARCHIVE ); // leilei - pre-1.25 sound behavior
 	s_muteWhenMinimized = Cvar_Get( "s_muteWhenMinimized", "0", CVAR_ARCHIVE );
 	s_muteWhenUnfocused = Cvar_Get( "s_muteWhenUnfocused", "0", CVAR_ARCHIVE );
-
+	s_xmp_startPattern = Cvar_Get( "s_xmp_startPattern", "0", CVAR_CHEAT ); // leilei - starting pattern for song
 	cv = Cvar_Get( "s_initsound", "1", 0 );
 	if( !cv->integer ) {
 		Com_Printf( "Sound disabled.\n" );
