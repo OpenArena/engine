@@ -149,7 +149,7 @@ snd_stream_t *S_XMP_CodecOpenStream(const char *filename)
 		xmpsong = xmp_create_context();
 		int itsloaded = 0;
 
-		itsloaded = xmp_load_module_from_memory(xmpsong, buffer, 0);
+		itsloaded = xmp_load_module_from_memory(xmpsong, buffer, thelength);
 
 		// Free our memory and close the file.
 		Hunk_FreeTempMemory(buffer);

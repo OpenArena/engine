@@ -1432,9 +1432,11 @@ static void S_OpenBackgroundStream( const char *filename ) {
 		return;
 	}
 
-	if(s_backgroundStream->info.channels != 2 || s_backgroundStream->info.rate != 22050) {
-		Com_Printf(S_COLOR_YELLOW "WARNING: music file %s is not 22k stereo\n", filename );
-	}
+// leilei - commented out, as we have music beyond this rate, and this warning is meant for an older
+//		iteration of q3's sound engine that couldn't handle other rates.
+//	if(s_backgroundStream->info.channels != 2 || s_backgroundStream->info.rate != 22050) {
+//		Com_Printf(S_COLOR_YELLOW "WARNING: music file %s is not 22k stereo\n", filename );
+//	}
 }
 
 
