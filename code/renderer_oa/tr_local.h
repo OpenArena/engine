@@ -365,7 +365,6 @@ typedef struct {
 
 	int			isGLSL;
 	int			isBlend;			// leilei - for leifx
-	qboolean		isLeiShade;			// leilei - for the automatic shader
 	qhandle_t		program;
 
 	int			imgWidth;
@@ -1387,7 +1386,7 @@ extern	cvar_t	*r_flaresDlightScale;
 
 extern cvar_t	*r_alternateBrightness;		// leilei - alternate brightness
 extern cvar_t	*r_leifx;	// Leilei - leifx nostalgia filter
-extern cvar_t	*r_modelshader;	// Leilei - new model shading
+extern cvar_t	*r_shadeMethod;	// Leilei - new model shading methods
 
 
 extern cvar_t	*r_suggestiveThemes;	// Leilei - mature content
@@ -2140,8 +2139,6 @@ void	RB_CalcDynamicColor( unsigned char *colors );
 void	RB_CalcDiffuseColor_Specular( unsigned char *colors );	// leilei - specular hack
 void	RB_CalcFlatAmbient( unsigned char *colors ); // leilei - cel hack
 void	RB_CalcFlatDirect( unsigned char *colors ); // leilei - cel hack
-void	RB_CalcNormal( unsigned char *colors ); // leilei - normal hack
-
 void 	RB_CalcGlowBlend( unsigned char *colors, int glowcol, int fx ); // leilei - rgbMod
 void 	RB_CalcUVColor( unsigned char *colors, int glowcol, int fx ); 	// leilei - rgbMod
 void 	RB_CalcNormalizeToAlpha( unsigned char *colors); 		// leilei - rgbMod 

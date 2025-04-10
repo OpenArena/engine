@@ -876,10 +876,6 @@ static void ComputeColors( shaderStage_t *pStage )
 			Com_Memset( tess.svars.colors, tr.identityLightByte, tess.numVertexes * 4 );
 			break;
 		case CGEN_LIGHTING_DIFFUSE:
-			if (r_shownormals->integer > 1 || (pStage->isLeiShade)){
-				RB_CalcNormal( ( unsigned char * ) tess.svars.colors ); // leilei - debug normals, or use the normals as a color for a lighting shader
-				break;
-			}
 			RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
 			if(r_monolightmaps->integer)
 			{
@@ -992,10 +988,6 @@ static void ComputeColors( shaderStage_t *pStage )
 			RB_CalcColorFromOneMinusEntity( ( unsigned char * ) tess.svars.colors );
 			break;
 		case CGEN_LIGHTING_DIFFUSE_SPECULAR:		// leilei - specular hack
-			if (r_shownormals->integer > 1 || (pStage->isLeiShade)){
-				RB_CalcNormal( ( unsigned char * ) tess.svars.colors ); // leilei - debug normals, or use the normals as a color for a lighting shader
-				break;
-			}
 			RB_CalcDiffuseColor_Specular( ( unsigned char * ) tess.svars.colors );
 			if(r_monolightmaps->integer)
 			{
@@ -1008,10 +1000,6 @@ static void ComputeColors( shaderStage_t *pStage )
 			}
 			break;
 		case CGEN_MATERIAL:
-			if (r_shownormals->integer > 1 || (pStage->isLeiShade)){
-				RB_CalcNormal( ( unsigned char * ) tess.svars.colors ); // leilei - debug normals, or use the normals as a color for a lighting shader
-				break;
-			}
 			RB_CalcMaterials( ( unsigned char * ) tess.svars.colors,  pStage->matAmb, pStage->matDif, pStage->matSpec, pStage->matEmis, pStage->matHard, pStage->matAlpha  );
 			break;
 	}

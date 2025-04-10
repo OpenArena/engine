@@ -208,7 +208,7 @@ cvar_t	*r_flaresDlightScale;
 cvar_t	*r_alternateBrightness;		// leilei - linux overbright fix
 cvar_t	*r_mockvr;		// Leilei - for debugging PVR only!
 cvar_t	*r_leifx;		// Leilei - leifx nostalgia filter
-cvar_t	*r_modelshader;		// Leilei
+cvar_t	*r_shadeMethod;		// Leilei
 cvar_t	*r_particles;		// Leilei - particle effects motif
 
 cvar_t	*r_leidebug;		// Leilei - debug
@@ -1291,7 +1291,7 @@ void R_Register( void )
 
 	r_mockvr = ri.Cvar_Get( "r_mockvr", "0" , CVAR_CHEAT);
 	r_leifx = ri.Cvar_Get( "r_leifx", "0" , CVAR_ARCHIVE | CVAR_LATCH);
-	r_modelshader = ri.Cvar_Get( "r_modelshader", "0" , CVAR_ARCHIVE | CVAR_LATCH);		// leilei - load and use special shaders for lightDiffuse models
+	r_shadeMethod = ri.Cvar_Get( "r_shadeMethod", "0" , CVAR_ARCHIVE | CVAR_LATCH);		// leilei - Alternative lightingDiffuse
 	r_detailTextureScale = ri.Cvar_Get( "r_detailtextureScale", "0", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - adjust scale of detail textures
 	r_detailTextureLayers = ri.Cvar_Get( "r_detailtextureLayers", "0", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - add more detail layers
 

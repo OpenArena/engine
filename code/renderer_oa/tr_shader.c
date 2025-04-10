@@ -1392,7 +1392,7 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 		//
 		// map3 <name>
 		//
-		else if ( !Q_stricmp( token, "map3" ) || (!Q_stricmp( token, "normalmap" ) && r_modelshader->integer))
+		else if ( !Q_stricmp( token, "map3" ) || (!Q_stricmp( token, "normalmap" )))
 		{
 			token = COM_ParseExt( text, qfalse );
 			if ( !token[0] )
@@ -1440,7 +1440,7 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 		//
 		// map4 <name>
 		//
-		else if ( !Q_stricmp( token, "map4" )  || (!Q_stricmp( token, "specmap" ) && r_modelshader->integer))
+		else if ( !Q_stricmp( token, "map4" )  || (!Q_stricmp( token, "specmap" )))
 		{
 			token = COM_ParseExt( text, qfalse );
 			if ( !token[0] )
@@ -1487,7 +1487,7 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 		//
 		// map5 <name>
 		//
-		else if ( !Q_stricmp( token, "map5" )  || (!Q_stricmp( token, "shadeballmap" ) && r_modelshader->integer))
+		else if ( !Q_stricmp( token, "map5" )  || (!Q_stricmp( token, "shadeballmap" )))
 		{
 			token = COM_ParseExt( text, qfalse );
 			if ( !token[0] )
@@ -4270,18 +4270,6 @@ static shader_t *FinishShader( void ) {
     //  vertexLightmap = qtrue;
     //}
 
-
-#ifdef GLSL_TEXTURES
-
-		// leilei - force new phong on lightdiffuse and lightdiffusespecular models
-		// FIXME: Intel HD doesn't like this.
-		if ((r_modelshader->integer) && (pStage->isGLSL==0) && (r_ext_vertex_shader->integer) && ((pStage->rgbGen == CGEN_LIGHTING_DIFFUSE) || (pStage->rgbGen == CGEN_LIGHTING_DIFFUSE_SPECULAR)))
-		{
-			pStage->program = RE_GLSL_RegisterProgram("leishade", "glsl/leishade_vp.glsl", 1, "glsl/leishade_fp.glsl", 1);
-			pStage->isGLSL=1;
-			pStage->isLeiShade=1;
-		}
-#endif
 		//
 		// determine sort order and fog color adjustment
 		//

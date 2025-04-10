@@ -1854,52 +1854,6 @@ static void RB_CalcDiffuseColor_scalar( unsigned char *colors )
 	}
 }
 
-// leilei - reveal normals to GLSL for light processing. HACK HACK HACK HACK HACK HACK
-void RB_CalcNormal( unsigned char *colors )
-{
-	float			*v;
-	float		*normal = ( float * ) tess.normal;
-	vec3_t			n, m;
-	int				numVertexes;
-
-	v = tess.xyz[0];
-	//normal = tess.normal[0];
-
-	numVertexes = tess.numVertexes;
-	for (int i = 0 ; i < numVertexes ; i++, v += 4, normal += 4) {
-		int y;
-		float mid;
-		for (y=0;y<3;y++){
-				n[y] = normal[y];
-				
-//				colors[i*4+y] = n[y];
-			}
-		//VectorNormalize(n);
-
-			mid = n[1] + n[2];
-			if (mid < 0) mid *= -1;
-			
-
-	//		m[0] = 127 - (n[1]*128);
-	//		m[1] = 127 - (n[2]*128);
-	//		m[2] = 255 - (mid*128);
-
-			m[0] = 127 + (n[0]*128);
-			m[1] = 127 + (n[1]*128);
-			m[2] = 127 + (n[2]*128);
-
-
-
-		
-		colors[i*4+0] = m[0];
-		colors[i*4+1] = m[1];
-		colors[i*4+2] = m[2];
-		colors[i*4+3] = 255;
-	}
-}
-
-
-
 void RB_CalcDiffuseColor_Specular( unsigned char *colors )
 {
 	int				i, j;
