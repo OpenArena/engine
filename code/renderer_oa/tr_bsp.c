@@ -119,7 +119,6 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 		if ( ( r | g | b ) > 255 ) {
 
 			int		max;
-			int gmr, gmg, gmb;	
 			max = r > g ? r : g;
 			max = max > b ? max : b;
 			r = r * 255 / max;
@@ -134,7 +133,6 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 			g += invader;
 			b += invader;
   
-
 			// Normalize... again!!!
 
 			max = r > g ? r : g;

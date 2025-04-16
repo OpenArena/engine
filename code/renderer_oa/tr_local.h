@@ -2337,5 +2337,7 @@ void R_LFX_Blood (const vec3_t org, const vec3_t dir, float pressure) ;
 void LFX_ShaderInit(void);
 void LFX_ParticleEffect (int effect, const vec3_t org, const vec3_t dir);
 
+extern char	extensions_string_full [BIG_INFO_STRING]; // leilei - gl extensions crash workaround
+
 #endif //TR_LOCAL_H
 
