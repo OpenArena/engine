@@ -109,15 +109,59 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	g = in[1] << shift;
 	b = in[2] << shift;
 	
-	// normalize by color instead of saturating to white
-	if ( ( r | g | b ) > 255 ) {
-		int		max;
+	if (r_lightmapColorNorm->integer == 2)	 // leilei 
+	{
+		float lum, invader = 0;
+		// get luma from base color
+		lum = (0.22126*r + 0.7152*g + 0.0722*b); // thanks wiki
 
-		max = r > g ? r : g;
-		max = max > b ? max : b;
-		r = r * 255 / max;
-		g = g * 255 / max;
-		b = b * 255 / max;
+		// normalize by color instead of saturating to white
+		if ( ( r | g | b ) > 255 ) {
+
+			int		max;
+			int gmr, gmg, gmb;	
+			max = r > g ? r : g;
+			max = max > b ? max : b;
+			r = r * 255 / max;
+			g = g * 255 / max;
+			b = b * 255 / max;
+
+			
+			invader = lum - (0.22126*r + 0.7152*g + 0.0722*b); // get the differences from the normalized color
+			invader *= (invader/255);
+
+			r += invader;
+			g += invader;
+			b += invader;
+  
+
+			// Normalize... again!!!
+
+			max = r > g ? r : g;
+			max = max > b ? max : b;
+			r = r * 255 / max;
+			g = g * 255 / max;
+			b = b * 255 / max;
+		}
+	}
+	else if (r_lightmapColorNorm->integer)	 // leilei - made this an option for trying normal clamp
+	{	
+		// normalize by color instead of saturating to white
+		if ( ( r | g | b ) > 255 ) {
+			int		max;
+	
+			max = r > g ? r : g;
+			max = max > b ? max : b;
+			r = r * 255 / max;
+			g = g * 255 / max;
+			b = b * 255 / max;
+		}
+	}
+	else
+	{
+		if ( r > 255 ) r = 255;
+		if ( g > 255 ) g = 255;
+		if ( b > 255 ) b = 255;
 	}
 
 	out[0] = r;

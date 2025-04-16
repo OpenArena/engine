@@ -318,7 +318,7 @@ typedef struct {
 } texModInfo_t;
 
 
-#define	MAX_IMAGE_ANIMATIONS	8
+#define	MAX_IMAGE_ANIMATIONS	16 // leilei - was 8
 
 typedef struct {
 	image_t			*image[MAX_IMAGE_ANIMATIONS];
@@ -1399,6 +1399,7 @@ extern	cvar_t	*r_iconmip;	// leilei - icon mip - picmip for 2d icons
 extern	cvar_t	*r_iconBits;	// leilei - icon color depth for 2d icons
 
 extern	cvar_t	*r_lightmapBits;	// leilei - lightmap color depth
+extern	cvar_t	*r_lightmapColorNorm;	// leilei - lightmap color normalize
 
 extern	cvar_t	*r_texdump;	// leilei - texture dumping
 

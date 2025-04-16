@@ -204,6 +204,9 @@ cvar_t	*r_flaresDlightShrink;
 cvar_t	*r_flaresDlightFade;
 cvar_t	*r_flaresDlightOpacity;
 cvar_t	*r_flaresDlightScale;
+
+cvar_t	*r_lightmapColorNorm;
+
 //cvar_t	*r_flaresSurfradii;
 cvar_t	*r_alternateBrightness;		// leilei - linux overbright fix
 cvar_t	*r_mockvr;		// Leilei - for debugging PVR only!
@@ -1228,6 +1231,7 @@ void R_Register( void )
 	r_nocurves = ri.Cvar_Get ("r_nocurves", "0", CVAR_CHEAT );
 	r_drawworld = ri.Cvar_Get ("r_drawworld", "1", CVAR_CHEAT );
 	r_lightmap = ri.Cvar_Get ("r_lightmap", "0", 0 );
+
 	r_portalOnly = ri.Cvar_Get ("r_portalOnly", "0", CVAR_CHEAT );
 
 
@@ -1305,6 +1309,7 @@ void R_Register( void )
 	r_iconBits = ri.Cvar_Get ("r_iconBits", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - icon bits
 
 	r_lightmapBits = ri.Cvar_Get ("r_lightmapBits", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - lightmap color bits
+	r_lightmapColorNorm = ri.Cvar_Get ("r_lightmapColorNorm", "1", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - lightmap color normalization
 
 	r_textureDither = ri.Cvar_Get ("r_textureDither", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - dithered textures
 
