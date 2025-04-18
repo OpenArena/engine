@@ -71,7 +71,6 @@ cvar_t	*r_skipBackEnd;
 cvar_t	*r_stereoEnabled;
 cvar_t	*r_anaglyphMode;
 
-cvar_t	*r_greyscale;
 cvar_t	*r_monolightmaps;
 
 cvar_t	*r_ignorehwgamma;
@@ -220,8 +219,6 @@ cvar_t	*r_leidebugeye;		// Leilei - eye debug
 cvar_t	*r_suggestiveThemes;		// leilei - mature content control
 
 cvar_t	*r_textureDither;	// leilei - Dithered texture
-
-cvar_t	*r_texdump;		// Leilei - debug - texture dump as they load, players should never need to use this!
 
 // leilei - fallback shader hack
 
@@ -998,6 +995,7 @@ void R_PrintLongString(const char *string)
 GfxInfo_f
 ================
 */
+extern char	extensions_string_full [BIG_INFO_STRING]; // leilei - gl extensions crash workaround
 void GfxInfo_f( void )
 {
 	const char *enablestrings[] = {
@@ -1171,10 +1169,9 @@ void R_Register( void )
 	r_subdivisions = ri.Cvar_Get ("r_subdivisions", "4", CVAR_ARCHIVE | CVAR_LATCH);
 	r_stereoEnabled = ri.Cvar_Get( "r_stereoEnabled", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ignoreFastPath = ri.Cvar_Get( "r_ignoreFastPath", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_greyscale = ri.Cvar_Get("r_greyscale", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	ri.Cvar_CheckRange(r_greyscale, 0, 1, qfalse);
-
 	r_monolightmaps = ri.Cvar_Get("r_monolightmaps", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	ri.Cvar_CheckRange(r_monolightmaps, 0, 1, qfalse);
+
 
 	//
 	// temporary latched variables that can only change over a restart
@@ -1295,7 +1292,7 @@ void R_Register( void )
 
 	r_mockvr = ri.Cvar_Get( "r_mockvr", "0" , CVAR_CHEAT);
 	r_leifx = ri.Cvar_Get( "r_leifx", "0" , CVAR_ARCHIVE | CVAR_LATCH);
-	r_shadeMethod = ri.Cvar_Get( "r_shadeMethod", "0" , CVAR_ARCHIVE | CVAR_LATCH);		// leilei - Alternative lightingDiffuse
+	r_shadeMethod = ri.Cvar_Get( "r_shadeMethod", "0" , CVAR_ARCHIVE);		// leilei - Alternative lightingDiffuse
 	r_detailTextureScale = ri.Cvar_Get( "r_detailtextureScale", "0", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - adjust scale of detail textures
 	r_detailTextureLayers = ri.Cvar_Get( "r_detailtextureLayers", "0", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - add more detail layers
 
@@ -1312,8 +1309,6 @@ void R_Register( void )
 	r_lightmapColorNorm = ri.Cvar_Get ("r_lightmapColorNorm", "1", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - lightmap color normalization
 
 	r_textureDither = ri.Cvar_Get ("r_textureDither", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - dithered textures
-
-	r_texdump = ri.Cvar_Get( "r_texdump", "0", CVAR_CHEAT );	// leilei - debug - texture dumping
 
 	// make sure all the commands added here are also
 	// removed in R_Shutdown
@@ -1530,7 +1525,6 @@ void R_Init( void )
 	R_BloomInit();
 	R_PostprocessingInit();
 	R_AltBrightnessInit();	// leilei	- alternate brightness
-	R_WaterInit();		// leilei - water test
 	max_polys = r_maxpolys->integer;
 	if (max_polys < MAX_POLYS)
 		max_polys = MAX_POLYS;

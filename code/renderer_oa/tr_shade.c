@@ -502,31 +502,6 @@ static void ProjectDlightTexture_altivec( void ) {
 		origin2 = dl->transformed[2];
 		radius = dl->radius;
 		scale = 1.0f / radius;
-
-		if(r_greyscale->integer)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else if(r_monolightmaps->integer)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else if(r_greyscale->value)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = LERP(dl->color[0] * 255.0f, luminance, r_greyscale->value);
-			floatColor[1] = LERP(dl->color[1] * 255.0f, luminance, r_greyscale->value);
-			floatColor[2] = LERP(dl->color[2] * 255.0f, luminance, r_greyscale->value);
-		}
-		else
 		{
 			floatColor[0] = dl->color[0] * 255.0f;
 			floatColor[1] = dl->color[1] * 255.0f;
@@ -673,35 +648,9 @@ static void ProjectDlightTexture_scalar( void ) {
 		radius = dl->radius;
 		scale = 1.0f / radius;
 
-		if(r_greyscale->integer)
-		{
-			float luminance;
-
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else if(r_monolightmaps->integer)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else if(r_greyscale->value)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = LERP(dl->color[0] * 255.0f, luminance, r_greyscale->value);
-			floatColor[1] = LERP(dl->color[1] * 255.0f, luminance, r_greyscale->value);
-			floatColor[2] = LERP(dl->color[2] * 255.0f, luminance, r_greyscale->value);
-		}
-		else
-		{
-			floatColor[0] = dl->color[0] * 255.0f;
-			floatColor[1] = dl->color[1] * 255.0f;
-			floatColor[2] = dl->color[2] * 255.0f;
-		}
+		floatColor[0] = dl->color[0] * 255.0f;
+		floatColor[1] = dl->color[1] * 255.0f;
+		floatColor[2] = dl->color[2] * 255.0f;
 
 		for ( i = 0 ; i < tess.numVertexes ; i++, texCoords += 2, colors += 4 ) {
 			int		clip = 0;
@@ -877,44 +826,18 @@ static void ComputeColors( shaderStage_t *pStage )
 			break;
 		case CGEN_LIGHTING_DIFFUSE:
 			RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
-			if(r_monolightmaps->integer)
-			{
-				int scale;
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-				}
-			}
 			break;
 		case CGEN_LIGHTING_UNIFORM:
-			RB_CalcUniformColor( ( unsigned char * ) tess.svars.colors );
-			break;
-		case CGEN_LIGHTING_DYNAMIC:
-			RB_CalcDynamicColor( ( unsigned char * ) tess.svars.colors );
+			RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
 			break;
 		case CGEN_LIGHTING_FLAT_AMBIENT:
-			RB_CalcFlatAmbient( ( unsigned char * ) tess.svars.colors );
-			if(r_monolightmaps->integer)
-			{
-				int scale;
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-				}
+			for ( i = 0; i < tess.numVertexes; i++ ) {
+				*(int *)tess.svars.colors[i] = *(int *)pStage->constantColor;
 			}
 			break;
 		case CGEN_LIGHTING_FLAT_DIRECT:
-			RB_CalcFlatDirect( ( unsigned char * ) tess.svars.colors );
-			if(r_monolightmaps->integer)
-			{
-				int scale;
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-				}
+			for ( i = 0; i < tess.numVertexes; i++ ) {
+				*(int *)tess.svars.colors[i] = *(int *)pStage->constantColor;
 			}
 			break;
 		case CGEN_EXACT_VERTEX:
@@ -986,18 +909,6 @@ static void ComputeColors( shaderStage_t *pStage )
 			break;
 		case CGEN_ONE_MINUS_ENTITY:
 			RB_CalcColorFromOneMinusEntity( ( unsigned char * ) tess.svars.colors );
-			break;
-		case CGEN_LIGHTING_DIFFUSE_SPECULAR:		// leilei - specular hack
-			RB_CalcDiffuseColor_Specular( ( unsigned char * ) tess.svars.colors );
-			if(r_monolightmaps->integer)
-			{
-				int scale;
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-				}
-			}
 			break;
 		case CGEN_MATERIAL:
 			RB_CalcMaterials( ( unsigned char * ) tess.svars.colors,  pStage->matAmb, pStage->matDif, pStage->matSpec, pStage->matEmis, pStage->matHard, pStage->matAlpha  );
@@ -1138,28 +1049,6 @@ static void ComputeColors( shaderStage_t *pStage )
 		}
 	}
 	
-	// if in greyscale rendering mode turn all color values into greyscale.
-	if(r_greyscale->integer)
-	{
-		int scale;
-		for(i = 0; i < tess.numVertexes; i++)
-		{
-			scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
- 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-		}
-	}
-	else if(r_greyscale->value)
-	{
-		float scale;
-		
-		for(i = 0; i < tess.numVertexes; i++)
-		{
-			scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-			tess.svars.colors[i][0] = LERP(tess.svars.colors[i][0], scale, r_greyscale->value);
-			tess.svars.colors[i][1] = LERP(tess.svars.colors[i][1], scale, r_greyscale->value);
-			tess.svars.colors[i][2] = LERP(tess.svars.colors[i][2], scale, r_greyscale->value);
-		}
-	}
 }
 
 
@@ -1170,9 +1059,7 @@ ComputeUVColors
 */
 static void ComputeUVColors( shaderStage_t *pStage )
 {
-	int		i;
-	
-	//
+	// 
 	// rgbMod
 	//
 	switch ( pStage->rgbMod )
@@ -1244,13 +1131,7 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 			RB_CalcEnvironmentTexCoords( ( float * ) tess.svars.texcoords[b] ); 
 			break;
 		case TCGEN_ENVIRONMENT_MAPPED_WATER:
-			RB_CalcEnvironmentTexCoordsJO( ( float * ) tess.svars.texcoords[b] ); 			
-			break;
-		case TCGEN_ENVIRONMENT_CELSHADE_MAPPED:
-			RB_CalcEnvironmentCelShadeTexCoords( ( float * ) tess.svars.texcoords[b] );
-			break;
-		case TCGEN_ENVIRONMENT_CELSHADE_LEILEI:
-			RB_CalcCelTexCoords( ( float * ) tess.svars.texcoords[b] );
+			RB_CalcEnvironmentTexCoordsEx( ( float * ) tess.svars.texcoords[b], 0, 1, 1 ); 		
 			break;
 		case TCGEN_EYE_LEFT:
 			RB_CalcEyes( ( float * ) tess.svars.texcoords[b], 1); 
@@ -1300,10 +1181,6 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 			case TMOD_ATLAS:
 				RB_CalcAtlasTexCoords(  &pStage->bundle[b].texMods[tm].atlas,
 								 ( float * ) tess.svars.texcoords[b] );
-				break;
-
-			case TMOD_LIGHTSCALE:
-				RB_CalcLightscaleTexCoords( ( float * ) tess.svars.texcoords[b] );
 				break;
 
 			case TMOD_TRANSFORM:
@@ -1373,10 +1250,6 @@ void GLSL_Feeder(shaderStage_t *pStage, shaderCommands_t *input)
 	/* fog color */
 	if (program->u_FogColor > -1 && tess.fogNum)
 		R_GLSL_SetUniform_FogColor(program, (tr.world->fogs + tess.fogNum)->colorInt);
-
-	/* greyscale */
-	if (program->u_Greyscale > -1)
-		R_GLSL_SetUniform_Greyscale(program, r_greyscale->integer);
 
 	/* identity light */
 	if (program->u_IdentityLight > -1)

@@ -245,7 +245,21 @@ void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float r, floa
 	if ( glConfig.hardwareType == GLHW_RIVA128 || glConfig.hardwareType == GLHW_PERMEDIA2 ) {
 		return;
 	}
+
 	dl = &backEndData->dlights[r_numdlights++];
+
+	// leilei - r_monolightmaps also desaturate vertex dynamic lights
+	float ml = r_monolightmaps->value; // sanitize
+	if (ml>1) ml=1; if (ml<0) ml=0;
+
+	if( ml )
+	{
+		float saturated = (r * 0.22126) + (g * 0.7152) + (b * 0.0722);
+		r = saturated + (r - saturated) * ( 1-ml );
+		g = saturated + (g - saturated) * ( 1-ml );
+		b = saturated + (b - saturated) * ( 1-ml );
+	}		
+
 	VectorCopy (org, dl->origin);
 	dl->radius = intensity;
 	dl->color[0] = r;

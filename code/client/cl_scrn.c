@@ -93,7 +93,6 @@ leilei - Adjusted for resolution and screen aspect ratio.... but from vertical o
 ================
 */
 void SCR_AdjustFrom480( float *x, float *y, float *w, float *h ) {
-	float	xscale;
 	float	yscale;
 
 	// scale for screen sizes
@@ -202,14 +201,8 @@ void SCR_DrawSmallChar( int x, int y, int ch, int scalemode ) {
 		float frow, fcol;
 		float	ax, ay, aw, ah;
 		float size;
-		float sizeup = 1.0f;
-		float sizedown = 1.0f;
 		ch &= 255;
 	
-		if (cls.glconfig.vidHeight >= 480)
-		sizeup = cls.glconfig.vidHeight / 480; 
-		sizedown = (cls.glconfig.vidHeight - 480);
-
 		if ( ch == ' ' ) {
 			return;
 		}

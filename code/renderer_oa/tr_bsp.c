@@ -108,6 +108,17 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	r = in[0] << shift;
 	g = in[1] << shift;
 	b = in[2] << shift;
+
+	// leilei - handle light desaturation here instead, so we can also mono the lightgrid and have one less redundant clamp
+	if( r_monolightmaps->value > 0)
+	{
+		float saturated = (r * 0.22126) + (g * 0.7152) + (b * 0.0722);
+		float ml = r_monolightmaps->value; // sanitize
+		if (ml>1) ml=1; if (ml<0) ml=0;
+		r = saturated + (r - saturated) * ( 1-ml );
+		g = saturated + (g - saturated) * ( 1-ml );
+		b = saturated + (b - saturated) * ( 1-ml );
+	}
 	
 	if (r_lightmapColorNorm->integer == 2)	 // leilei 
 	{
@@ -341,7 +352,6 @@ static shader_t *ShaderForShaderNum( int shaderNum, int lightmapNum ) {
 		// leilei - placeholder hack
 		if (tr.placeholderTextureAvail == 1 && !Q_strncmp( dsh->shader, "textures", 8 ))
 		{
-	//	return tr.placeholderTextureShader;
 		shader = R_FindShader( "placeholder_texture", lightmapNum, qtrue );
 		return shader;
 		}

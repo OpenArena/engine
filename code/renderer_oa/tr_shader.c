@@ -996,13 +996,6 @@ static void ParseTexMod( char *_text, shaderStage_t *stage )
 		tmi->type = TMOD_ATLAS;
 	}
 
-	else if ( !Q_stricmp( token, "lightscale" ) )
-	{
-		token = COM_ParseExt( text, qfalse );
-	
-		tmi->type = TMOD_LIGHTSCALE;
-	}
-
 	//
 	// transform
 	//
@@ -2665,29 +2658,9 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 			{
 				stage->rgbGen = CGEN_LIGHTING_DIFFUSE;
 			}
-			else if ( !Q_stricmp( token, "lightingUniform" ) )
-			{
-				stage->rgbGen = CGEN_LIGHTING_UNIFORM;
-			}
-			else if ( !Q_stricmp( token, "lightingDynamic" ) )
-			{
-				stage->rgbGen = CGEN_LIGHTING_DYNAMIC;
-			}
-			else if ( !Q_stricmp( token, "flatAmbient" ) )
-			{
-				stage->rgbGen = CGEN_LIGHTING_FLAT_AMBIENT;
-			}
-			else if ( !Q_stricmp( token, "flatDirect" ) )
-			{
-				stage->rgbGen = CGEN_LIGHTING_FLAT_DIRECT;
-			}
 			else if ( !Q_stricmp( token, "oneMinusVertex" ) )
 			{
 				stage->rgbGen = CGEN_ONE_MINUS_VERTEX;
-			}
-			else if ( !Q_stricmp( token, "lightingSpecularDiffuse" ) )	// leilei - deprecated
-			{
-				stage->rgbGen = CGEN_LIGHTING_DIFFUSE;
 			}
 			else if ( !Q_stricmp( token, "material" ) )	// leilei - material system
 			{
@@ -2909,11 +2882,11 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 			}
 			else if ( !Q_stricmp( token, "cel" ) )
 			{
-				stage->bundle[0].tcGen = TCGEN_ENVIRONMENT_CELSHADE_MAPPED;
+				stage->bundle[0].tcGen = TCGEN_ENVIRONMENT_MAPPED; 
 			}
 			else if ( !Q_stricmp( token, "celshading" ) )		// leilei - my technique is different
 			{
-				stage->bundle[0].tcGen = TCGEN_ENVIRONMENT_CELSHADE_LEILEI;
+				stage->bundle[0].tcGen = TCGEN_ENVIRONMENT_MAPPED;
 			}
 			else if ( !Q_stricmp( token, "eyeleft" ) )		// leilei - eye tracking
 			{

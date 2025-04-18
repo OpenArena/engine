@@ -195,8 +195,6 @@ typedef enum {
 	TCGEN_LIGHTMAP,
 	TCGEN_TEXTURE,
 	TCGEN_ENVIRONMENT_MAPPED,
-	TCGEN_ENVIRONMENT_CELSHADE_MAPPED,
-	TCGEN_ENVIRONMENT_CELSHADE_LEILEI,	// leilei - cel hack
 	TCGEN_ENVIRONMENT_MAPPED_WATER,	// leilei - fake water reflection
 	TCGEN_EYE_LEFT,				// eyes
 	TCGEN_EYE_RIGHT,			// eyes
@@ -878,7 +876,7 @@ typedef struct {
 	unsigned		v_FogColor;
 
 	GLint			u_Greyscale;
-	int				v_Greyscale;
+	int			v_Greyscale;
 
 	GLint			u_IdentityLight;
 	float			v_IdentityLight;
@@ -1351,8 +1349,6 @@ extern	cvar_t	*r_skipBackEnd;
 
 extern	cvar_t	*r_anaglyphMode;
 
-extern	cvar_t	*r_greyscale;
-
 extern	cvar_t	*r_monolightmaps;
 extern	cvar_t	*r_ignoreGLErrors;
 
@@ -1400,8 +1396,6 @@ extern	cvar_t	*r_iconBits;	// leilei - icon color depth for 2d icons
 
 extern	cvar_t	*r_lightmapBits;	// leilei - lightmap color depth
 extern	cvar_t	*r_lightmapColorNorm;	// leilei - lightmap color normalize
-
-extern	cvar_t	*r_texdump;	// leilei - texture dumping
 
 extern  cvar_t	*r_detailTextureScale;		// leilei - scale tweak the detail textures, 0 doesn't tweak at all.
 extern  cvar_t	*r_detailTextureLayers;		// leilei - add in more smaller detail texture layers, expensive!
@@ -2107,13 +2101,10 @@ void	R_TransformClipToWindow( const vec4_t clip, const viewParms_t *view, vec4_t
 void	RB_DeformTessGeometry( void );
 
 void	RB_CalcEnvironmentTexCoords( float *dstTexCoords );
-void	RB_CalcCelTexCoords( float *dstTexCoords );		// leilei - cel hack
-void	RB_CalcEnvironmentTexCoordsJO( float *dstTexCoords );	// leilei
-void	RB_CalcEnvironmentTexCoordsR( float *dstTexCoords );	// leilei
+void    RB_CalcEnvironmentTexCoordsEx( float *st, int xx, int yy, int mode ); // leilei - extra envmapping
+
 void    RB_CalcEyes( float *st, qboolean theothereye); // leilei - eyes
-void	RB_CalcEnvironmentCelShadeTexCoords( float *dstTexCoords );
-void	RB_CalcEnvironmentTexCoordsNew( float *dstTexCoords );
-void	RB_CalcEnvironmentTexCoordsHW(void);
+
 void	RB_CalcFogTexCoords( float *dstTexCoords );
 void	RB_CalcScrollTexCoords( const float scroll[2], float *dstTexCoords );
 void	RB_CalcRotateTexCoords( float rotSpeed, float *dstTexCoords );
@@ -2128,22 +2119,15 @@ void	RB_CalcWaveColor( const waveForm_t *wf, unsigned char *dstColors );
 void	RB_CalcAlphaFromEntity( unsigned char *dstColors );
 void	RB_CalcAlphaFromOneMinusEntity( unsigned char *dstColors );
 void	RB_CalcStretchTexCoords( const waveForm_t *wf, float *texCoords );
-void	RB_CalcLightscaleTexCoords( float *texCoords );
 void	RB_CalcAtlasTexCoords( const atlas_t *at, float *st );
 void	RB_CalcColorFromEntity( unsigned char *dstColors );
 void	RB_CalcColorFromOneMinusEntity( unsigned char *dstColors );
 void	RB_CalcSpecularAlpha( unsigned char *alphas );
 void	RB_CalcSpecularAlphaNew( unsigned char *alphas );
-void	RB_CalcDiffuseColor( unsigned char *colors );
-void	RB_CalcUniformColor( unsigned char *colors );
-void	RB_CalcDynamicColor( unsigned char *colors );
-void	RB_CalcDiffuseColor_Specular( unsigned char *colors );	// leilei - specular hack
-void	RB_CalcFlatAmbient( unsigned char *colors ); // leilei - cel hack
-void	RB_CalcFlatDirect( unsigned char *colors ); // leilei - cel hack
 void 	RB_CalcGlowBlend( unsigned char *colors, int glowcol, int fx ); // leilei - rgbMod
 void 	RB_CalcUVColor( unsigned char *colors, int glowcol, int fx ); 	// leilei - rgbMod
 void 	RB_CalcNormalizeToAlpha( unsigned char *colors); 		// leilei - rgbMod 
-
+void	RB_CalcDiffuseColor( unsigned char *colors );
 void    RB_CalcMaterials( unsigned char *colors, int ambient, int diffuse, int specular, int emissive, int spechard, int alpha ); // leilei - materials
 
 void	RB_CalcVertLights( unsigned char *colors );	// leilei - dynamic vertex lights
@@ -2306,10 +2290,7 @@ void RE_TakeVideoFrame( int width, int height,
 
 //Bloom Stuff
 void R_BloomInit( void );
-void R_WaterInit( void );
 void R_BloomScreen( void );
-void R_WaterScreen( void );
-void R_PaletteScreen( void );
 // Postprocessing
 void R_PostprocessScreen( void );
 void R_PostprocessingInit(void);
@@ -2336,8 +2317,6 @@ void R_QarticleExplosion(const vec3_t org);
 void R_LFX_Blood (const vec3_t org, const vec3_t dir, float pressure) ;
 void LFX_ShaderInit(void);
 void LFX_ParticleEffect (int effect, const vec3_t org, const vec3_t dir);
-
-extern char	extensions_string_full [BIG_INFO_STRING]; // leilei - gl extensions crash workaround
 
 #endif //TR_LOCAL_H
 
