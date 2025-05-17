@@ -1402,6 +1402,8 @@ extern  cvar_t	*r_detailTextureLayers;		// leilei - add in more smaller detail t
 
 extern  cvar_t	*r_textureDither;		// leilei - apply dithering for lower texture bits
 
+extern cvar_t	*r_skytess;		// leilei - adjusts the subdivisions of the sky (max 8, min 1)
+
 //====================================================================
 
 void R_SwapBuffers( int );
@@ -1948,6 +1950,7 @@ static ID_INLINE void R_GLSL_SetUniform_rubyOutputSize(glslProgram_t *program, c
 
 void R_GLSL_Init(void);
 qhandle_t RE_GLSL_RegisterProgram(const char *name, const char *programVertexObjects, int numVertexObjects, const char *programFragmentObjects, int numFragmentObjects);
+qhandle_t RE_GLSL_RegisterProgramRaw(const char *name, const char *programVertexObjects, int numVertexObjects, const char *programFragmentObjects, int numFragmentObjects);
 void R_GLSL_UseProgram(qhandle_t index);
 void RB_GLSL_StageIteratorGeneric(void);
 void RB_GLSL_StageIteratorVertexLitTexture(void);

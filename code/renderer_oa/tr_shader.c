@@ -456,6 +456,137 @@ static qboolean R_GLSL_LoadProgram(glslProgram_t *program, const char *name, con
 #endif
 }
 
+static qboolean R_GLSL_LoadProgramRaw(glslProgram_t *program, const char *name, const char *programVertexObjects, int numVertexObjects, const char *programFragmentObjects, int numFragmentObjects) {
+#ifdef GLSL_BACKEND
+	GLcharARB		*buffer_vp[MAX_PROGRAM_OBJECTS];
+	GLcharARB		*buffer_fp[MAX_PROGRAM_OBJECTS];
+	GLcharARB		*buffer;
+	GLhandleARB		shader_vp;
+	GLhandleARB		shader_fp;
+	GLint			status;
+	char			*str;
+	int				size = 0;
+	int				i;
+
+
+	/* create program */
+	program->program = qglCreateProgramObjectARB();
+
+	/* vertex program */
+	for (i = 0, str = (const char *)programVertexObjects; i < numVertexObjects; i++, str += MAX_QPATH) {
+		buffer_vp[i] = str;
+		size += sizeof(str)*32;
+		if (!buffer_vp[i]) {
+			ri.Printf( PRINT_WARNING,  "Couldn't load %s", str);
+			return qfalse;
+		}
+
+		/* compile vertex shader */
+		shader_vp = qglCreateShaderObjectARB(GL_VERTEX_SHADER_ARB);
+		qglShaderSourceARB(shader_vp, 1, (const GLcharARB **)&buffer_vp, NULL);
+		qglCompileShaderARB(shader_vp);
+
+		/* check for errors in vertex shader */
+		qglGetObjectParameterivARB(shader_vp, GL_OBJECT_COMPILE_STATUS_ARB, &status);
+		if (!status) {
+			int		length;
+			char	*msg;
+
+			/* print glsl error message */
+			qglGetObjectParameterivARB(shader_vp, GL_OBJECT_INFO_LOG_LENGTH_ARB, &length);
+			msg = ri.Hunk_AllocateTempMemory(length);
+			qglGetInfoLogARB(shader_vp, length, &length, msg);
+			ri.Printf(PRINT_ALL, "Error:\n%s\n", msg);
+			ri.Hunk_FreeTempMemory(msg);
+
+			/* exit */
+			ri.Printf( PRINT_WARNING,  "Couldn't compile vertex shader for program %s", name);
+			return qfalse;
+		}
+
+		/* attach vertex shader to program */
+		qglAttachObjectARB(program->program, shader_vp);
+		qglDeleteObjectARB(shader_vp);
+	}
+
+	/* fragment program */
+	for (i = 0, str = (const char *)programFragmentObjects; i < numFragmentObjects; i++, str += MAX_QPATH) {
+		buffer_fp[i] = str;
+		size += sizeof(str)*32;
+		if (!buffer_fp[i]) {
+			ri.Printf( PRINT_WARNING,  "Couldn't load %s", str);
+			return qfalse;
+		}
+
+		/* compile fragment shader */
+		shader_fp = qglCreateShaderObjectARB(GL_FRAGMENT_SHADER_ARB);
+		qglShaderSourceARB(shader_fp, 1, (const GLcharARB **)&buffer_fp[i], NULL);
+		qglCompileShaderARB(shader_fp);
+
+		/* check for errors in fragment shader */
+		qglGetObjectParameterivARB(shader_fp, GL_OBJECT_COMPILE_STATUS_ARB, &status);
+		if (!status) {
+			int		length;
+			char	*msg;
+
+			/* print glsl error message */
+
+			qglGetObjectParameterivARB(shader_fp, GL_OBJECT_INFO_LOG_LENGTH_ARB, &length);
+			msg = ri.Hunk_AllocateTempMemory(length);
+			qglGetInfoLogARB(shader_fp, length, &length, msg);
+			ri.Printf(PRINT_ALL, "Error:\n%s\n", msg);
+			ri.Hunk_FreeTempMemory(msg);
+			ri.Printf(PRINT_DEVELOPER, "oops\n");
+			/* exit */
+			ri.Printf( PRINT_WARNING,  "Couldn't compile fragment shader for program %s", name);
+			return qfalse;
+		}
+
+		/* attach fragment shader to program */
+		qglAttachObjectARB(program->program, shader_fp);
+		qglDeleteObjectARB(shader_fp);
+	}
+
+	/* link complete program */
+	qglLinkProgramARB(program->program);
+	/* check for linking errors */
+	qglGetObjectParameterivARB(program->program, GL_OBJECT_LINK_STATUS_ARB, &status);
+	if (!status) {
+		int		length;
+		char	*msg;
+		/* print glsl error message */
+		qglGetObjectParameterivARB(program->program, GL_OBJECT_INFO_LOG_LENGTH_ARB, &length);
+		msg = ri.Hunk_AllocateTempMemory(length);
+		qglGetInfoLogARB(program->program, length, &length, msg);
+		ri.Printf(PRINT_ALL, "Error:\n%s\n", msg);
+		ri.Hunk_FreeTempMemory(msg);
+
+		/* exit */
+		ri.Printf( PRINT_WARNING,  "Couldn't link shaders for program %s", name);
+		return qfalse;
+	}
+	/* build single large program file for parsing */
+	buffer = ri.Hunk_AllocateTempMemory(++size);
+
+	Q_strncpyz(buffer, buffer_vp[0], size);
+
+	for (i = 1; i < numVertexObjects; i++)
+		strncat(buffer, buffer_vp[i], size);
+	for (i = 0; i < numFragmentObjects; i++)
+		strncat(buffer, buffer_fp[i], size);
+	/* get uniform locations */
+	qglUseProgramObjectARB(program->program);
+	R_GLSL_ParseProgram(program, buffer);
+	qglUseProgramObjectARB(0);
+	/* clean up */
+	ri.Hunk_FreeTempMemory(buffer);
+
+	return qtrue;
+#endif
+}
+
+
+
 /*
  * RE_GLSL_RegisterProgram
  * Loads in a program of given name
@@ -512,6 +643,65 @@ qhandle_t RE_GLSL_RegisterProgram(const char *name, const char *programVertexObj
 	return program->index;
 #endif
 }
+
+
+/*
+ * RE_GLSL_RegisterProgram
+ * Loads in a program of given name
+ */
+qhandle_t RE_GLSL_RegisterProgramRaw(const char *name, const char *programVertexObjects, int numVertexObjects, const char *programFragmentObjects, int numFragmentObjects) {
+#ifdef GLSL_BACKEND
+	glslProgram_t	*program;
+	qhandle_t		hProgram;
+
+	if (!vertexShaders)
+			return 0;
+
+	if (!name || !name[0]) {
+		ri.Printf(PRINT_ALL, "RE_GLSL_RegisterProgram: NULL name\n");
+		return 0;
+	}
+
+	if (strlen(name) >= MAX_QPATH) {
+		Com_Printf("Program name exceeds MAX_QPATH\n");
+		return 0;
+	}
+
+	/* search the currently loaded programs */
+	for (hProgram = 0; hProgram < tr.numPrograms; hProgram++) {
+		program = tr.programs[hProgram];
+		if (!strcmp(program->name, name)) {
+			if (!program->valid)
+				return 0;
+
+			return hProgram;
+		}
+	}
+
+	/* allocate a new glslProgram_t */
+	if ((program = R_GLSL_AllocProgram()) == NULL) {
+		ri.Printf(PRINT_WARNING, "RE_GLSL_RegisterProgram: R_GLSL_AllocProgram() failed for '%s'\n", name);
+		return 0;
+	}
+
+	/* only set the name after the program has successfully loaded */
+	Q_strncpyz(program->name, name, sizeof(program->name));
+
+	R_IssuePendingRenderCommands();
+
+	/* load the files */
+	if (!R_GLSL_LoadProgramRaw(program, name, (const char*)programVertexObjects, numVertexObjects, (const char*)programFragmentObjects, numFragmentObjects)) {
+		qglDeleteObjectARB(program->program);
+		program->valid = qfalse; 
+		//vertexShaders=0;     //If program in error disable the glsl feature altogether
+		return 0;
+	}
+
+	program->valid = qtrue;
+	return program->index;
+#endif
+}
+
 
 
 void R_RemapShader(const char *shaderName, const char *newShaderName, const char *timeOffset) {

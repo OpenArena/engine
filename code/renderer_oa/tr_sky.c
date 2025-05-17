@@ -25,6 +25,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define SKY_SUBDIVISIONS		8
 #define HALF_SKY_SUBDIVISIONS	(SKY_SUBDIVISIONS/2)
 
+// leilei - optimizing sky
+static int SkySub = 8;
+static int HalfSkySub = 4;
+
 static float s_cloudTexCoords[6][SKY_SUBDIVISIONS+1][SKY_SUBDIVISIONS+1][2];
 static float s_cloudTexP[6][SKY_SUBDIVISIONS+1][SKY_SUBDIVISIONS+1];
 
@@ -309,6 +313,7 @@ static void MakeSkyVec( float s, float t, int axis, float outSt[2], vec3_t outXY
 	float	boxSize;
 
 	boxSize = backEnd.viewParms.zFar / 1.75;		// div sqrt(3)
+
 	b[0] = s*boxSize;
 	b[1] = t*boxSize;
 	b[2] = boxSize;
@@ -367,11 +372,11 @@ static void DrawSkySide( struct image_s *image, const int mins[2], const int max
 
 	GL_Bind( image );
 
-	for ( t = mins[1]+HALF_SKY_SUBDIVISIONS; t < maxs[1]+HALF_SKY_SUBDIVISIONS; t++ )
+	for ( t = mins[1]+HalfSkySub; t < maxs[1]+HalfSkySub; t++ )
 	{
 		qglBegin( GL_TRIANGLE_STRIP );
 
-		for ( s = mins[0]+HALF_SKY_SUBDIVISIONS; s <= maxs[0]+HALF_SKY_SUBDIVISIONS; s++ )
+		for ( s = mins[0]+HalfSkySub; s <= maxs[0]+HalfSkySub; s++ )
 		{
 			qglTexCoord2fv( s_skyTexCoords[t][s] );
 			qglVertex3fv( s_skyPoints[t][s] );
@@ -398,10 +403,10 @@ static void DrawSkyBox( shader_t *shader )
 		int sky_mins_subd[2], sky_maxs_subd[2];
 		int s, t;
 
-		sky_mins[0][i] = floor( sky_mins[0][i] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
-		sky_mins[1][i] = floor( sky_mins[1][i] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
-		sky_maxs[0][i] = ceil( sky_maxs[0][i] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
-		sky_maxs[1][i] = ceil( sky_maxs[1][i] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
+		sky_mins[0][i] = floor( sky_mins[0][i] * HalfSkySub ) / HalfSkySub;
+		sky_mins[1][i] = floor( sky_mins[1][i] * HalfSkySub ) / HalfSkySub;
+		sky_maxs[0][i] = ceil( sky_maxs[0][i] * HalfSkySub ) / HalfSkySub;
+		sky_maxs[1][i] = ceil( sky_maxs[1][i] * HalfSkySub ) / HalfSkySub;
 
 		if ( ( sky_mins[0][i] >= sky_maxs[0][i] ) ||
 			 ( sky_mins[1][i] >= sky_maxs[1][i] ) )
@@ -409,38 +414,38 @@ static void DrawSkyBox( shader_t *shader )
 			continue;
 		}
 
-		sky_mins_subd[0] = sky_mins[0][i] * HALF_SKY_SUBDIVISIONS;
-		sky_mins_subd[1] = sky_mins[1][i] * HALF_SKY_SUBDIVISIONS;
-		sky_maxs_subd[0] = sky_maxs[0][i] * HALF_SKY_SUBDIVISIONS;
-		sky_maxs_subd[1] = sky_maxs[1][i] * HALF_SKY_SUBDIVISIONS;
+		sky_mins_subd[0] = sky_mins[0][i] * HalfSkySub;
+		sky_mins_subd[1] = sky_mins[1][i] * HalfSkySub;
+		sky_maxs_subd[0] = sky_maxs[0][i] * HalfSkySub;
+		sky_maxs_subd[1] = sky_maxs[1][i] * HalfSkySub;
 
-		if ( sky_mins_subd[0] < -HALF_SKY_SUBDIVISIONS ) 
-			sky_mins_subd[0] = -HALF_SKY_SUBDIVISIONS;
-		else if ( sky_mins_subd[0] > HALF_SKY_SUBDIVISIONS ) 
-			sky_mins_subd[0] = HALF_SKY_SUBDIVISIONS;
-		if ( sky_mins_subd[1] < -HALF_SKY_SUBDIVISIONS )
-			sky_mins_subd[1] = -HALF_SKY_SUBDIVISIONS;
-		else if ( sky_mins_subd[1] > HALF_SKY_SUBDIVISIONS ) 
-			sky_mins_subd[1] = HALF_SKY_SUBDIVISIONS;
+		if ( sky_mins_subd[0] < -HalfSkySub ) 
+			sky_mins_subd[0] = -HalfSkySub;
+		else if ( sky_mins_subd[0] > HalfSkySub ) 
+			sky_mins_subd[0] = HalfSkySub;
+		if ( sky_mins_subd[1] < -HalfSkySub )
+			sky_mins_subd[1] = -HalfSkySub;
+		else if ( sky_mins_subd[1] > HalfSkySub ) 
+			sky_mins_subd[1] = HalfSkySub;
 
-		if ( sky_maxs_subd[0] < -HALF_SKY_SUBDIVISIONS ) 
-			sky_maxs_subd[0] = -HALF_SKY_SUBDIVISIONS;
-		else if ( sky_maxs_subd[0] > HALF_SKY_SUBDIVISIONS ) 
-			sky_maxs_subd[0] = HALF_SKY_SUBDIVISIONS;
-		if ( sky_maxs_subd[1] < -HALF_SKY_SUBDIVISIONS ) 
-			sky_maxs_subd[1] = -HALF_SKY_SUBDIVISIONS;
-		else if ( sky_maxs_subd[1] > HALF_SKY_SUBDIVISIONS ) 
-			sky_maxs_subd[1] = HALF_SKY_SUBDIVISIONS;
+		if ( sky_maxs_subd[0] < -HalfSkySub ) 
+			sky_maxs_subd[0] = -HalfSkySub;
+		else if ( sky_maxs_subd[0] > HalfSkySub ) 
+			sky_maxs_subd[0] = HalfSkySub;
+		if ( sky_maxs_subd[1] < -HalfSkySub ) 
+			sky_maxs_subd[1] = -HalfSkySub;
+		else if ( sky_maxs_subd[1] > HalfSkySub ) 
+			sky_maxs_subd[1] = HalfSkySub;
 
 		//
 		// iterate through the subdivisions
 		//
-		for ( t = sky_mins_subd[1]+HALF_SKY_SUBDIVISIONS; t <= sky_maxs_subd[1]+HALF_SKY_SUBDIVISIONS; t++ )
+		for ( t = sky_mins_subd[1]+HalfSkySub; t <= sky_maxs_subd[1]+HalfSkySub; t++ )
 		{
-			for ( s = sky_mins_subd[0]+HALF_SKY_SUBDIVISIONS; s <= sky_maxs_subd[0]+HALF_SKY_SUBDIVISIONS; s++ )
+			for ( s = sky_mins_subd[0]+HalfSkySub; s <= sky_maxs_subd[0]+HalfSkySub; s++ )
 			{
-				MakeSkyVec( ( s - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
-							( t - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
+				MakeSkyVec( ( s - HalfSkySub ) / ( float ) HalfSkySub, 
+							( t - HalfSkySub ) / ( float ) HalfSkySub, 
 							i, 
 							s_skyTexCoords[t][s], 
 							s_skyPoints[t][s] );
@@ -463,9 +468,9 @@ static void FillCloudySkySide( const int mins[2], const int maxs[2], qboolean ad
 	tHeight = maxs[1] - mins[1] + 1;
 	sWidth = maxs[0] - mins[0] + 1;
 
-	for ( t = mins[1]+HALF_SKY_SUBDIVISIONS; t <= maxs[1]+HALF_SKY_SUBDIVISIONS; t++ )
+	for ( t = mins[1]+HalfSkySub; t <= maxs[1]+HalfSkySub; t++ )
 	{
-		for ( s = mins[0]+HALF_SKY_SUBDIVISIONS; s <= maxs[0]+HALF_SKY_SUBDIVISIONS; s++ )
+		for ( s = mins[0]+HalfSkySub; s <= maxs[0]+HalfSkySub; s++ )
 		{
 			VectorAdd( s_skyPoints[t][s], backEnd.viewParms.or.origin, tess.xyz[tess.numVertexes] );
 			tess.texCoords[tess.numVertexes][0][0] = s_skyTexCoords[t][s][0];
@@ -516,7 +521,7 @@ static void FillCloudBox( const shader_t *shader, int stage )
 
 		if ( 1 ) // FIXME? shader->sky.fullClouds )
 		{
-			MIN_T = -HALF_SKY_SUBDIVISIONS;
+			MIN_T = -HalfSkySub;
 
 			// still don't want to draw the bottom, even if fullClouds
 			if ( i == 5 )
@@ -537,15 +542,15 @@ static void FillCloudBox( const shader_t *shader, int stage )
 				continue;
 			case 4:		// top
 			default:
-				MIN_T = -HALF_SKY_SUBDIVISIONS;
+				MIN_T = -HalfSkySub;
 				break;
 			}
 		}
 
-		sky_mins[0][i] = floor( sky_mins[0][i] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
-		sky_mins[1][i] = floor( sky_mins[1][i] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
-		sky_maxs[0][i] = ceil( sky_maxs[0][i] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
-		sky_maxs[1][i] = ceil( sky_maxs[1][i] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
+		sky_mins[0][i] = floor( sky_mins[0][i] * HalfSkySub ) / HalfSkySub;
+		sky_mins[1][i] = floor( sky_mins[1][i] * HalfSkySub ) / HalfSkySub;
+		sky_maxs[0][i] = ceil( sky_maxs[0][i] * HalfSkySub ) / HalfSkySub;
+		sky_maxs[1][i] = ceil( sky_maxs[1][i] * HalfSkySub ) / HalfSkySub;
 
 		if ( ( sky_mins[0][i] >= sky_maxs[0][i] ) ||
 			 ( sky_mins[1][i] >= sky_maxs[1][i] ) )
@@ -553,38 +558,38 @@ static void FillCloudBox( const shader_t *shader, int stage )
 			continue;
 		}
 
-		sky_mins_subd[0] = ri.ftol(sky_mins[0][i] * HALF_SKY_SUBDIVISIONS);
-		sky_mins_subd[1] = ri.ftol(sky_mins[1][i] * HALF_SKY_SUBDIVISIONS);
-		sky_maxs_subd[0] = ri.ftol(sky_maxs[0][i] * HALF_SKY_SUBDIVISIONS);
-		sky_maxs_subd[1] = ri.ftol(sky_maxs[1][i] * HALF_SKY_SUBDIVISIONS);
+		sky_mins_subd[0] = ri.ftol(sky_mins[0][i] * HalfSkySub);
+		sky_mins_subd[1] = ri.ftol(sky_mins[1][i] * HalfSkySub);
+		sky_maxs_subd[0] = ri.ftol(sky_maxs[0][i] * HalfSkySub);
+		sky_maxs_subd[1] = ri.ftol(sky_maxs[1][i] * HalfSkySub);
 
-		if ( sky_mins_subd[0] < -HALF_SKY_SUBDIVISIONS ) 
-			sky_mins_subd[0] = -HALF_SKY_SUBDIVISIONS;
-		else if ( sky_mins_subd[0] > HALF_SKY_SUBDIVISIONS ) 
-			sky_mins_subd[0] = HALF_SKY_SUBDIVISIONS;
+		if ( sky_mins_subd[0] < -HalfSkySub ) 
+			sky_mins_subd[0] = -HalfSkySub;
+		else if ( sky_mins_subd[0] > HalfSkySub ) 
+			sky_mins_subd[0] = HalfSkySub;
 		if ( sky_mins_subd[1] < MIN_T )
 			sky_mins_subd[1] = MIN_T;
-		else if ( sky_mins_subd[1] > HALF_SKY_SUBDIVISIONS ) 
-			sky_mins_subd[1] = HALF_SKY_SUBDIVISIONS;
+		else if ( sky_mins_subd[1] > HalfSkySub ) 
+			sky_mins_subd[1] = HalfSkySub;
 
-		if ( sky_maxs_subd[0] < -HALF_SKY_SUBDIVISIONS ) 
-			sky_maxs_subd[0] = -HALF_SKY_SUBDIVISIONS;
-		else if ( sky_maxs_subd[0] > HALF_SKY_SUBDIVISIONS ) 
-			sky_maxs_subd[0] = HALF_SKY_SUBDIVISIONS;
+		if ( sky_maxs_subd[0] < -HalfSkySub ) 
+			sky_maxs_subd[0] = -HalfSkySub;
+		else if ( sky_maxs_subd[0] > HalfSkySub ) 
+			sky_maxs_subd[0] = HalfSkySub;
 		if ( sky_maxs_subd[1] < MIN_T )
 			sky_maxs_subd[1] = MIN_T;
-		else if ( sky_maxs_subd[1] > HALF_SKY_SUBDIVISIONS ) 
-			sky_maxs_subd[1] = HALF_SKY_SUBDIVISIONS;
+		else if ( sky_maxs_subd[1] > HalfSkySub ) 
+			sky_maxs_subd[1] = HalfSkySub;
 
 		//
 		// iterate through the subdivisions
 		//
-		for ( t = sky_mins_subd[1]+HALF_SKY_SUBDIVISIONS; t <= sky_maxs_subd[1]+HALF_SKY_SUBDIVISIONS; t++ )
+		for ( t = sky_mins_subd[1]+HalfSkySub; t <= sky_maxs_subd[1]+HalfSkySub; t++ )
 		{
-			for ( s = sky_mins_subd[0]+HALF_SKY_SUBDIVISIONS; s <= sky_maxs_subd[0]+HALF_SKY_SUBDIVISIONS; s++ )
+			for ( s = sky_mins_subd[0]+HalfSkySub; s <= sky_maxs_subd[0]+HalfSkySub; s++ )
 			{
-				MakeSkyVec( ( s - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
-							( t - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
+				MakeSkyVec( ( s - HalfSkySub ) / ( float ) HalfSkySub, 
+							( t - HalfSkySub ) / ( float ) HalfSkySub, 
 							i, 
 							NULL,
 							s_skyPoints[t][s] );
@@ -644,19 +649,30 @@ void R_InitSkyTexCoords( float heightCloud )
 	vec3_t skyVec;
 	vec3_t v;
 
+
+	// leilei - sky optimizations
+	SkySub = r_skytess->integer;
+	HalfSkySub = r_skytess->integer / 2;
+
+	if (SkySub < 2) SkySub = 2;
+	if (SkySub > 8) SkySub = 8;
+	if (HalfSkySub < 1) HalfSkySub = 1;
+	if (HalfSkySub > 4) HalfSkySub = 4;
+
+
 	// init zfar so MakeSkyVec works even though
 	// a world hasn't been bounded
 	backEnd.viewParms.zFar = 1024;
 
 	for ( i = 0; i < 6; i++ )
 	{
-		for ( t = 0; t <= SKY_SUBDIVISIONS; t++ )
+		for ( t = 0; t <= SkySub; t++ )
 		{
-			for ( s = 0; s <= SKY_SUBDIVISIONS; s++ )
+			for ( s = 0; s <= SkySub; s++ )
 			{
 				// compute vector from view origin to sky side integral point
-				MakeSkyVec( ( s - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
-							( t - HALF_SKY_SUBDIVISIONS ) / ( float ) HALF_SKY_SUBDIVISIONS, 
+				MakeSkyVec( ( s - HalfSkySub ) / ( float ) HalfSkySub, 
+							( t - HalfSkySub ) / ( float ) HalfSkySub, 
 							i, 
 							NULL,
 							skyVec );
@@ -705,6 +721,7 @@ void RB_DrawSun( void ) {
 	if ( !backEnd.skyRenderedThisView ) {
 		return;
 	}
+	// TODO: Add a sun check for sky shaders explicitly requesting for the sun, to keep compatibility with sun-less skies.
 	if ( !r_drawSun->integer ) {
 		return;
 	}
@@ -838,7 +855,9 @@ void RB_StageIteratorSky( void ) {
 	// r_showsky will let all the sky blocks be drawn in
 	// front of everything to allow developers to see how
 	// much sky is getting sucked in
-	if ( r_showsky->integer ) {
+	if ( r_showsky->integer == 2) {
+		qglDepthRange( 0.0, 1.0 ); // leilei - pvr1 imitation
+	} else if ( r_showsky->integer ) {
 		qglDepthRange( 0.0, 0.0 );
 	} else {
 		qglDepthRange( 1.0, 1.0 );
