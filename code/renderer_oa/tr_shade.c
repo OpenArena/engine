@@ -502,31 +502,6 @@ static void ProjectDlightTexture_altivec( void ) {
 		origin2 = dl->transformed[2];
 		radius = dl->radius;
 		scale = 1.0f / radius;
-
-		if(r_greyscale->integer)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else if(r_monolightmaps->integer)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else if(r_greyscale->value)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = LERP(dl->color[0] * 255.0f, luminance, r_greyscale->value);
-			floatColor[1] = LERP(dl->color[1] * 255.0f, luminance, r_greyscale->value);
-			floatColor[2] = LERP(dl->color[2] * 255.0f, luminance, r_greyscale->value);
-		}
-		else
 		{
 			floatColor[0] = dl->color[0] * 255.0f;
 			floatColor[1] = dl->color[1] * 255.0f;
@@ -673,35 +648,9 @@ static void ProjectDlightTexture_scalar( void ) {
 		radius = dl->radius;
 		scale = 1.0f / radius;
 
-		if(r_greyscale->integer)
-		{
-			float luminance;
-
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else if(r_monolightmaps->integer)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = floatColor[1] = floatColor[2] = luminance;
-		}
-		else if(r_greyscale->value)
-		{
-			float luminance;
-			
-			luminance = LUMA(dl->color[0], dl->color[1], dl->color[2]) * 255.0f;
-			floatColor[0] = LERP(dl->color[0] * 255.0f, luminance, r_greyscale->value);
-			floatColor[1] = LERP(dl->color[1] * 255.0f, luminance, r_greyscale->value);
-			floatColor[2] = LERP(dl->color[2] * 255.0f, luminance, r_greyscale->value);
-		}
-		else
-		{
-			floatColor[0] = dl->color[0] * 255.0f;
-			floatColor[1] = dl->color[1] * 255.0f;
-			floatColor[2] = dl->color[2] * 255.0f;
-		}
+		floatColor[0] = dl->color[0] * 255.0f;
+		floatColor[1] = dl->color[1] * 255.0f;
+		floatColor[2] = dl->color[2] * 255.0f;
 
 		for ( i = 0 ; i < tess.numVertexes ; i++, texCoords += 2, colors += 4 ) {
 			int		clip = 0;
@@ -807,6 +756,7 @@ static void ProjectDlightTexture( void ) {
 		return;
 	}
 #endif
+	if ( !r_vertexLight->integer ) 
 	ProjectDlightTexture_scalar();
 }
 
@@ -875,49 +825,19 @@ static void ComputeColors( shaderStage_t *pStage )
 			Com_Memset( tess.svars.colors, tr.identityLightByte, tess.numVertexes * 4 );
 			break;
 		case CGEN_LIGHTING_DIFFUSE:
-			if (r_shownormals->integer > 1 || (pStage->isLeiShade)){
-				RB_CalcNormal( ( unsigned char * ) tess.svars.colors ); // leilei - debug normals, or use the normals as a color for a lighting shader
-				break;
-			}
 			RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
-			if(r_monolightmaps->integer)
-			{
-				int scale;
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-				}
-			}
 			break;
 		case CGEN_LIGHTING_UNIFORM:
-			RB_CalcUniformColor( ( unsigned char * ) tess.svars.colors );
-			break;
-		case CGEN_LIGHTING_DYNAMIC:
-			RB_CalcDynamicColor( ( unsigned char * ) tess.svars.colors );
+			RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
 			break;
 		case CGEN_LIGHTING_FLAT_AMBIENT:
-			RB_CalcFlatAmbient( ( unsigned char * ) tess.svars.colors );
-			if(r_monolightmaps->integer)
-			{
-				int scale;
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-				}
+			for ( i = 0; i < tess.numVertexes; i++ ) {
+				*(int *)tess.svars.colors[i] = *(int *)pStage->constantColor;
 			}
 			break;
 		case CGEN_LIGHTING_FLAT_DIRECT:
-			RB_CalcFlatDirect( ( unsigned char * ) tess.svars.colors );
-			if(r_monolightmaps->integer)
-			{
-				int scale;
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-				}
+			for ( i = 0; i < tess.numVertexes; i++ ) {
+				*(int *)tess.svars.colors[i] = *(int *)pStage->constantColor;
 			}
 			break;
 		case CGEN_EXACT_VERTEX:
@@ -944,35 +864,10 @@ static void ComputeColors( shaderStage_t *pStage )
 				}
 			}
 			break;
-		case CGEN_VERTEX_LIT:		// leilei - mixing vertex colors with lighting through a glorious light hack
-			{			// 	    should only be used for entity models, not map assets!
-			vec3_t	dcolor, acolor;	// to save the color from actual light
-			vec3_t	vcolor;
-			int y;
-
-
-			// Backup our colors
-			VectorCopy( backEnd.currentEntity->ambientLight, acolor );			
-			VectorCopy( backEnd.currentEntity->directedLight, dcolor );			
-			VectorCopy( backEnd.currentEntity->e.shaderRGBA, vcolor );			
-
-			// Make our vertex color take over 
-
-			for(y=0;y<3;y++){
-				backEnd.currentEntity->ambientLight[y] 	*= (vcolor[y] / 255);
-
-				if (backEnd.currentEntity->ambientLight[y] < 1)   backEnd.currentEntity->ambientLight[y] = 1; // black!!!
-				if (backEnd.currentEntity->ambientLight[y] > 255) backEnd.currentEntity->ambientLight[y] = 255; // white!!!!!
-			//	backEnd.currentEntity->ambientLight[y] 	*= (vcolor[y] / 255);
-			//	backEnd.currentEntity->directedLight[y] *= (vcolor[y] / 255);
-			}
-		
-			// run it through our favorite preferred lighting calculation functions
-			RB_CalcDiffuseColor( ( unsigned char * ) tess.svars.colors );
-
-			// Restore light color for any other stage that doesn't do it
-			VectorCopy( acolor, backEnd.currentEntity->ambientLight);			
-			VectorCopy( dcolor, backEnd.currentEntity->directedLight);			
+		case CGEN_VERTEX_LIT:		// leilei - for world only
+			{			 	    
+				Com_Memcpy( tess.svars.colors, tess.vertexColors, tess.numVertexes * sizeof( tess.vertexColors[0] ) );
+				RB_CalcVertLights(  ( unsigned char * ) tess.svars.colors  );			
 			}
 			break;
 		case CGEN_ONE_MINUS_VERTEX:
@@ -1015,58 +910,10 @@ static void ComputeColors( shaderStage_t *pStage )
 		case CGEN_ONE_MINUS_ENTITY:
 			RB_CalcColorFromOneMinusEntity( ( unsigned char * ) tess.svars.colors );
 			break;
-		case CGEN_LIGHTING_DIFFUSE_SPECULAR:		// leilei - specular hack
-			if (r_shownormals->integer > 1 || (pStage->isLeiShade)){
-				RB_CalcNormal( ( unsigned char * ) tess.svars.colors ); // leilei - debug normals, or use the normals as a color for a lighting shader
-				break;
-			}
-			RB_CalcDiffuseColor_Specular( ( unsigned char * ) tess.svars.colors );
-			if(r_monolightmaps->integer)
-			{
-				int scale;
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-				}
-			}
+		case CGEN_MATERIAL:
+			RB_CalcMaterials( ( unsigned char * ) tess.svars.colors,  pStage->matAmb, pStage->matDif, pStage->matSpec, pStage->matEmis, pStage->matHard, pStage->matAlpha  );
 			break;
 	}
-
-	// leilei PowerVR Hack
-
-	if (r_parseStageSimple->integer)
-		{
-			float scale;
-			vec3_t normme;
-			if ((pStage->isBlend == 1) || (pStage->isBlend == 3)){ // additive or subtracive
-				
-				for(i = 0; i < tess.numVertexes; i++)
-				{
-					scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-		 			tess.svars.colors[i][3] = scale - tess.svars.colors[i][3];
-					if (tess.svars.colors[i][3] > 255) tess.svars.colors[i][3] = 255;
-
-
-					normme[0] = tess.svars.colors[i][0];
-					normme[1] = tess.svars.colors[i][1];
-					normme[2] = tess.svars.colors[i][2];
-
-				//	normme[0] *= (4 * tr.identityLight);
-				//	normme[1] *= (4 * tr.identityLight);
-				//	normme[2] *= (4 * tr.identityLight);
-
-
-					VectorNormalize(normme);
-
-
-					tess.svars.colors[i][0] = normme[0]*255;
-					tess.svars.colors[i][1] = normme[1]*255;
-					tess.svars.colors[i][2] = normme[2]*255;
-				}
-			}
-
-		}
 
 	//
 	// alphaGen
@@ -1154,6 +1001,34 @@ static void ComputeColors( shaderStage_t *pStage )
 	}
 
 	//
+	// rgbMod
+	//
+	switch ( pStage->rgbMod )
+	{
+		case CMOD_GLOW:
+			RB_CalcGlowBlend( ( unsigned char * ) tess.svars.colors, pStage->rgbModCol, pStage->rgbModMode );
+			break;
+		case CMOD_UVCOL:
+			RB_CalcUVColor( ( unsigned char * ) tess.svars.colors, pStage->rgbModCol, pStage->rgbModMode );
+			break;
+		case CMOD_NORMALIZETOALPHA:
+			RB_CalcNormalizeToAlpha( ( unsigned char * ) tess.svars.colors );
+			break;
+		case CMOD_NORMALIZETOALPHAFAST: // TODO: use first vert
+			RB_CalcNormalizeToAlpha( ( unsigned char * ) tess.svars.colors );
+			break;
+		case CMOD_OPAQUE:
+			for ( i = 0; i < tess.numVertexes; i++ ) 
+				tess.svars.colors[i][3] = 0xff;
+			break;
+		case CMOD_LIGHTING:
+			// TODO
+			break;
+		case CMOD_BAD:
+			return;
+	}
+
+	//
 	// fog adjustment for colors to fade out as fog increases
 	//
 	if ( tess.fogNum )
@@ -1174,29 +1049,42 @@ static void ComputeColors( shaderStage_t *pStage )
 		}
 	}
 	
-	// if in greyscale rendering mode turn all color values into greyscale.
-	if(r_greyscale->integer)
-	{
-		int scale;
-		for(i = 0; i < tess.numVertexes; i++)
-		{
-			scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
- 			tess.svars.colors[i][0] = tess.svars.colors[i][1] = tess.svars.colors[i][2] = scale;
-		}
-	}
-	else if(r_greyscale->value)
-	{
-		float scale;
-		
-		for(i = 0; i < tess.numVertexes; i++)
-		{
-			scale = LUMA(tess.svars.colors[i][0], tess.svars.colors[i][1], tess.svars.colors[i][2]);
-			tess.svars.colors[i][0] = LERP(tess.svars.colors[i][0], scale, r_greyscale->value);
-			tess.svars.colors[i][1] = LERP(tess.svars.colors[i][1], scale, r_greyscale->value);
-			tess.svars.colors[i][2] = LERP(tess.svars.colors[i][2], scale, r_greyscale->value);
-		}
-	}
 }
+
+
+/*
+===============
+ComputeUVColors
+===============
+*/
+static void ComputeUVColors( shaderStage_t *pStage )
+{
+	// 
+	// rgbMod
+	//
+	switch ( pStage->rgbMod )
+	{
+		case CMOD_GLOW:
+			// we do this elsewhere
+			break;
+		case CMOD_UVCOL:
+			RB_CalcUVColor( ( unsigned char * ) tess.svars.colors, pStage->rgbModCol, pStage->rgbModMode );
+			break;
+		case CMOD_NORMALIZETOALPHA:
+			break;
+		case CMOD_NORMALIZETOALPHAFAST: // TODO: use first vert
+			break;
+		case CMOD_OPAQUE:
+			break;
+		case CMOD_LIGHTING:
+			break;
+		case CMOD_BAD:
+			return;
+	}
+
+
+}
+
 
 /*
 ===============
@@ -1243,13 +1131,7 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 			RB_CalcEnvironmentTexCoords( ( float * ) tess.svars.texcoords[b] ); 
 			break;
 		case TCGEN_ENVIRONMENT_MAPPED_WATER:
-			RB_CalcEnvironmentTexCoordsJO( ( float * ) tess.svars.texcoords[b] ); 			
-			break;
-		case TCGEN_ENVIRONMENT_CELSHADE_MAPPED:
-			RB_CalcEnvironmentCelShadeTexCoords( ( float * ) tess.svars.texcoords[b] );
-			break;
-		case TCGEN_ENVIRONMENT_CELSHADE_LEILEI:
-			RB_CalcCelTexCoords( ( float * ) tess.svars.texcoords[b] );
+			RB_CalcEnvironmentTexCoordsEx( ( float * ) tess.svars.texcoords[b], 0, 1, 1 ); 		
 			break;
 		case TCGEN_EYE_LEFT:
 			RB_CalcEyes( ( float * ) tess.svars.texcoords[b], 1); 
@@ -1299,10 +1181,6 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 			case TMOD_ATLAS:
 				RB_CalcAtlasTexCoords(  &pStage->bundle[b].texMods[tm].atlas,
 								 ( float * ) tess.svars.texcoords[b] );
-				break;
-
-			case TMOD_LIGHTSCALE:
-				RB_CalcLightscaleTexCoords( ( float * ) tess.svars.texcoords[b] );
 				break;
 
 			case TMOD_TRANSFORM:
@@ -1372,10 +1250,6 @@ void GLSL_Feeder(shaderStage_t *pStage, shaderCommands_t *input)
 	/* fog color */
 	if (program->u_FogColor > -1 && tess.fogNum)
 		R_GLSL_SetUniform_FogColor(program, (tr.world->fogs + tess.fogNum)->colorInt);
-
-	/* greyscale */
-	if (program->u_Greyscale > -1)
-		R_GLSL_SetUniform_Greyscale(program, r_greyscale->integer);
 
 	/* identity light */
 	if (program->u_IdentityLight > -1)
@@ -1468,11 +1342,6 @@ void GLSL_Feeder(shaderStage_t *pStage, shaderCommands_t *input)
 		R_BindAnimatedImage(&pStage->bundle[7]);
 	}
 
-	if (program->u_mpass1 > -1 && pStage->bundle[1].image[0]) {	GL_SelectTexture(11);	qglEnable(GL_TEXTURE_2D);	R_BindAnimatedImage(&pStage->bundle[11]);}
-	if (program->u_mpass2 > -1 && pStage->bundle[1].image[0]) {	GL_SelectTexture(12);	qglEnable(GL_TEXTURE_2D);	R_BindAnimatedImage(&pStage->bundle[12]);}
-	if (program->u_mpass3 > -1 && pStage->bundle[1].image[0]) {	GL_SelectTexture(13);	qglEnable(GL_TEXTURE_2D);	R_BindAnimatedImage(&pStage->bundle[13]);}
-	if (program->u_mpass4 > -1 && pStage->bundle[1].image[0]) {	GL_SelectTexture(14);	qglEnable(GL_TEXTURE_2D);	R_BindAnimatedImage(&pStage->bundle[14]);}
-
 	/* time */
 	if (program->u_Time > -1)
 		R_GLSL_SetUniform_Time(program, input->shaderTime);
@@ -1488,11 +1357,6 @@ void GLSL_Clean(void)
 {
 	glslProgram_t	*program;
 	program = tr.programs[glState.currentProgram];
-
-	if (program->u_mpass1 > -1) {	GL_SelectTexture(11);	qglDisable(GL_TEXTURE_2D); }
-	if (program->u_mpass2 > -1) {	GL_SelectTexture(12);	qglDisable(GL_TEXTURE_2D); }
-	if (program->u_mpass3 > -1) {	GL_SelectTexture(13);	qglDisable(GL_TEXTURE_2D); }
-	if (program->u_mpass4 > -1) {	GL_SelectTexture(14);	qglDisable(GL_TEXTURE_2D); }
 	
 	/* disable texture unit 7 */
 	if (program->u_Texture7 > -1)

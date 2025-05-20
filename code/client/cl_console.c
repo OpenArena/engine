@@ -517,6 +517,8 @@ DRAWING
 ==============================================================================
 */
 
+extern cvar_t  *cl_consoleScale;	// leilei - scale the console
+
 
 /*
 ================
@@ -536,7 +538,7 @@ void Con_DrawInput (void) {
 
 	re.SetColor( con.color );
 
-	SCR_DrawSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH, y, ']' );
+	SCR_DrawSmallChar( con.xadjust + 1 * SMALLCHAR_WIDTH, y, ']' ,2);
 
 	Field_Draw( &g_consoleField, con.xadjust + 2 * SMALLCHAR_WIDTH, y,
 		SCREEN_WIDTH - 3 * SMALLCHAR_WIDTH, qtrue, qtrue );
@@ -587,7 +589,7 @@ void Con_DrawNotify (void)
 				currentColor = (text[x]>>8) % NUMBER_OF_COLORS;
 				re.SetColor( g_color_table[currentColor] );
 			}
-			SCR_DrawSmallChar( cl_conXOffset->integer + con.xadjust + (x+1)*SMALLCHAR_WIDTH, v, text[x] & 0xff );
+			SCR_DrawSmallChar( cl_conXOffset->integer + con.xadjust + (x+1)*SMALLCHAR_WIDTH, v, text[x] & 0xff ,2);
 		}
 
 		v += SMALLCHAR_HEIGHT;
@@ -636,6 +638,17 @@ void Con_DrawSolidConsole( float frac ) {
 	int				currentColor;
 	vec4_t			color;
 
+	if (cl_consoleScale->integer && (cls.glconfig.vidWidth > SCREEN_WIDTH))
+	{
+	lines = SCREEN_HEIGHT * frac;
+	if (lines <= 0)
+		return;
+
+	if (lines > SCREEN_HEIGHT )
+		lines = SCREEN_HEIGHT;
+	}	
+	else
+	{
 	lines = cls.glconfig.vidHeight * frac;
 	if (lines <= 0)
 		return;
@@ -646,6 +659,7 @@ void Con_DrawSolidConsole( float frac ) {
 	// on wide screens, we will center the text
 	con.xadjust = 0;
 	SCR_AdjustFrom640( &con.xadjust, NULL, NULL, NULL );
+	}
 
 	// draw the background
 	y = frac * SCREEN_HEIGHT;
@@ -667,9 +681,31 @@ void Con_DrawSolidConsole( float frac ) {
 		}
 	}
 
-	color[0] = 1;
-	color[1] = 0;
-	color[2] = 0;
+	// leilei - normalize our custom color for the line
+	//color[0] = 1;
+	//color[1] = 0;	// was 1 pre-1.25
+	//color[2] = 0;
+
+	// leilei - normalize from our custom console color and apply it to the line
+	{
+	float	max;
+	float rgb[3];
+
+	rgb[0] = cl_consoleColor[0]->value;
+	rgb[1] = cl_consoleColor[1]->value;
+	rgb[2] = cl_consoleColor[2]->value;
+
+	max = rgb[0] + rgb[1] + rgb[2] / 3;
+
+	if (max > 0)
+		{
+		color[0] = rgb[0] / max;
+		color[1] = rgb[1] / max;
+		color[2] = rgb[2] / max;
+		}
+	}
+
+
 	if( !cl_consoleType->integer )
 		color[3] = 1;
 	SCR_FillRect( 0, y, SCREEN_WIDTH, 2, color );
@@ -677,14 +713,24 @@ void Con_DrawSolidConsole( float frac ) {
 
 	// draw the version number
 
-	re.SetColor( g_color_table[ColorIndex(COLOR_RED)] );
+	re.SetColor( g_color_table[ColorIndex(cl_consoleAccent->integer)] );
 
 	i = strlen( Q3_VERSION );
 
-	for (x=0 ; x<i ; x++) {
-		SCR_DrawSmallChar( cls.glconfig.vidWidth - ( i - x + 1 ) * SMALLCHAR_WIDTH,
-			lines - SMALLCHAR_HEIGHT, Q3_VERSION[x] );
+	if (cl_consoleScale->integer && (cls.glconfig.vidWidth > SCREEN_WIDTH)){
+		for (x=0 ; x<i ; x++) {
+			SCR_DrawSmallChar( SCREEN_WIDTH - ( i - x + 1 ) * SMALLCHAR_WIDTH,
+				lines - SMALLCHAR_HEIGHT, Q3_VERSION[x], 1 );
+		}
 	}
+	else
+	{
+		for (x=0 ; x<i ; x++) {
+			SCR_DrawSmallChar( cls.glconfig.vidWidth - ( i - x + 1 ) * SMALLCHAR_WIDTH,
+				lines - SMALLCHAR_HEIGHT, Q3_VERSION[x], 0 );
+		}
+	}
+
 
 
 	// draw the text
@@ -697,9 +743,9 @@ void Con_DrawSolidConsole( float frac ) {
 	if (con.display != con.current)
 	{
 	// draw arrows to show the buffer is backscrolled
-		re.SetColor( g_color_table[ColorIndex(COLOR_RED)] );
+		re.SetColor( g_color_table[ColorIndex(cl_consoleAccent->integer)] );
 		for (x=0 ; x<con.linewidth ; x+=4)
-			SCR_DrawSmallChar( con.xadjust + (x+1)*SMALLCHAR_WIDTH, y, '^' );
+			SCR_DrawSmallChar( con.xadjust + (x+1)*SMALLCHAR_WIDTH, y, '^' ,2);
 		y -= SMALLCHAR_HEIGHT;
 		rows--;
 	}
@@ -733,7 +779,7 @@ void Con_DrawSolidConsole( float frac ) {
 				currentColor = (text[x]>>8) % NUMBER_OF_COLORS;
 				re.SetColor( g_color_table[currentColor] );
 			}
-			SCR_DrawSmallChar(  con.xadjust + (x+1)*SMALLCHAR_WIDTH, y, text[x] & 0xff );
+			SCR_DrawSmallChar(  con.xadjust + (x+1)*SMALLCHAR_WIDTH, y, text[x] & 0xff, 2 );
 		}
 	}
 

@@ -108,16 +108,69 @@ static	void R_ColorShiftLightingBytes( byte in[4], byte out[4] ) {
 	r = in[0] << shift;
 	g = in[1] << shift;
 	b = in[2] << shift;
-	
-	// normalize by color instead of saturating to white
-	if ( ( r | g | b ) > 255 ) {
-		int		max;
 
-		max = r > g ? r : g;
-		max = max > b ? max : b;
-		r = r * 255 / max;
-		g = g * 255 / max;
-		b = b * 255 / max;
+	// leilei - handle light desaturation here instead, so we can also mono the lightgrid and have one less redundant clamp
+	if( r_monolightmaps->value > 0)
+	{
+		float saturated = (r * 0.22126) + (g * 0.7152) + (b * 0.0722);
+		float ml = r_monolightmaps->value; // sanitize
+		if (ml>1) ml=1; if (ml<0) ml=0;
+		r = saturated + (r - saturated) * ( 1-ml );
+		g = saturated + (g - saturated) * ( 1-ml );
+		b = saturated + (b - saturated) * ( 1-ml );
+	}
+	
+	if (r_lightmapColorNorm->integer == 2)	 // leilei 
+	{
+		float lum, invader = 0;
+		// get luma from base color
+		lum = (0.22126*r + 0.7152*g + 0.0722*b); // thanks wiki
+
+		// normalize by color instead of saturating to white
+		if ( ( r | g | b ) > 255 ) {
+
+			int		max;
+			max = r > g ? r : g;
+			max = max > b ? max : b;
+			r = r * 255 / max;
+			g = g * 255 / max;
+			b = b * 255 / max;
+
+			
+			invader = lum - (0.22126*r + 0.7152*g + 0.0722*b); // get the differences from the normalized color
+			invader *= (invader/255);
+
+			r += invader;
+			g += invader;
+			b += invader;
+  
+			// Normalize... again!!!
+
+			max = r > g ? r : g;
+			max = max > b ? max : b;
+			r = r * 255 / max;
+			g = g * 255 / max;
+			b = b * 255 / max;
+		}
+	}
+	else if (r_lightmapColorNorm->integer)	 // leilei - made this an option for trying normal clamp
+	{	
+		// normalize by color instead of saturating to white
+		if ( ( r | g | b ) > 255 ) {
+			int		max;
+	
+			max = r > g ? r : g;
+			max = max > b ? max : b;
+			r = r * 255 / max;
+			g = g * 255 / max;
+			b = b * 255 / max;
+		}
+	}
+	else
+	{
+		if ( r > 255 ) r = 255;
+		if ( g > 255 ) g = 255;
+		if ( b > 255 ) b = 255;
 	}
 
 	out[0] = r;
@@ -299,7 +352,6 @@ static shader_t *ShaderForShaderNum( int shaderNum, int lightmapNum ) {
 		// leilei - placeholder hack
 		if (tr.placeholderTextureAvail == 1 && !Q_strncmp( dsh->shader, "textures", 8 ))
 		{
-	//	return tr.placeholderTextureShader;
 		shader = R_FindShader( "placeholder_texture", lightmapNum, qtrue );
 		return shader;
 		}

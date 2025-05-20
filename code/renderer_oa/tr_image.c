@@ -213,18 +213,18 @@ void R_InitPalette( void ) {
 
 	byte           *buff;
 	int i, v;
-	ri.Printf( PRINT_ALL, "INIT PALETTE......\n");
+	ri.Printf( PRINT_ALL, "R_InitPalette: \n");
 
 	ri.FS_ReadFile("gfx/palette.lmp", (void **)&buff);
 	if(!buff){
-		ri.Printf( PRINT_ALL, "PALLETE FALED :(!\n" );
+		ri.Printf( PRINT_ALL, "PALETTE FAILED\n" );
 		paletteavailable = 0;	// Don't have a palette
 		paletteenabled   = 0;	// Don't do 8-bit textures
 		return;
 	}
 
 	palettemain = buff;
-	ri.Printf( PRINT_ALL, "PALETTE LOADDEEEED!!!!!!!!!!!!1\n" );
+	ri.Printf( PRINT_ALL, "PALETTE LOADED\n" );
 	paletteavailable = 1;	// Do have a palette
 
 	if (palettedTextureSupport) {
@@ -1033,79 +1033,6 @@ int hqresample = 0;		// leilei - high quality texture resampling
 				// Currently 0 as there is an alignment issue I haven't fixed.
 
 int	isicon;			// leilei  - for determining if it's an icon.
-char	dumpname[ MAX_QPATH ];  // leilei - name for texture dumping
-
-static void DumpTex( unsigned *data, 
-						  int width, int height  )
-{
-
-// leilei - Do crazy dumping crap
-	byte		*scan;
-	byte *baffer, *alffer, *flipper;
-	scan = ((byte *)data);
-	int padlen = 0; 
-	int be, ber;
-	int scrale = width * height;
-	int hasalf = 0;
-	float countw = 0;
-#if 0
-	int scravg = width + height / 2;
-	int quality = 85; // estimate quality from total size
-	if (scravg > 511) quality = 42; // huge textures
-	else if (scravg > 255) quality = 62; // large textures
-	else if (scravg > 127) quality = 72; // large textures
-	else if (scravg < 127) quality = 95; // tiny textures
-#endif
-	baffer = 	ri.Hunk_AllocateTempMemory( width * height * 3 );
-	flipper = 	ri.Hunk_AllocateTempMemory( width * height * 3 );
-	alffer = 	ri.Hunk_AllocateTempMemory( width * height * 3 );
-	// TODO: Save alpha separately
-	// I'm gonna flip......
-	int alfcnt = 0;
-
-
-
-	for (be=0; be<scrale; be++){
-		int bib;
-
-		if (countw > width)
-		countw = 0;
-		else
-		countw++;
-		ber = scrale - be - 1;
-		bib = be;
-		if (bib < 0) bib = 0;
-		if (bib > scrale) bib = 0;
-		baffer[bib*3] 	= scan[ber*4];
-		baffer[bib*3+1] 	= scan[ber*4+1];
-		baffer[bib*3+2] 	= scan[ber*4+2];
-		alffer[bib*3] 	= scan[ber*4+3];
-		alffer[bib*3+1] 	= scan[ber*4+3];
-		alffer[bib*3+2] 	= scan[ber*4+3];
-		if (scan[ber*4+3] > 1){ hasalf = 1;}
-		if (scan[ber*4+3] == 255){ alfcnt += 1; }
-	}
-
-
-	// NOW FIX IT
-
-
-	//memcount = (width * 3 + padlen) * height;
-	if ((width > 16) && (height > 16)){
-		RE_SaveJPG( va("dump/%s.jpg", dumpname), 85,width, height, baffer, padlen);
-		if (hasalf) {
-			RE_SaveJPG( va("dump/%s_alpha.jpg", dumpname), 85,width, height, alffer, padlen);
-		}
-	}
-	ri.Printf( PRINT_ALL, "TEXDUMP: %s \n", dumpname );
-
-//	if ( baffer != 0 )
-	ri.Hunk_FreeTempMemory( baffer );
-//	if ( alffer != 0 )
-	ri.Hunk_FreeTempMemory( alffer );
-	ri.Hunk_FreeTempMemory( flipper );
-}
-
 
 static void Upload32( unsigned *data, 
 						  int width, int height, 
@@ -1127,9 +1054,6 @@ static void Upload32( unsigned *data,
 	float		rMax = 0, gMax = 0, bMax = 0;
 	int		texsizex, texsizey;
 	int		forceBits = 0; 
-
-
-	if (lightMap && r_parseStageSimple->integer) hackoperation = 4;
 
 
 	//
@@ -1208,12 +1132,8 @@ static void Upload32( unsigned *data,
 	//
 
 	if ( isicon ){
-	
 		if (r_iconmip->integer){
-	
-	
 			// Auto-determine from resolution division
-			
 			if (r_iconmip->integer == 1){
 				int wadth, haght, dev = 0;
 	
@@ -1266,8 +1186,6 @@ static void Upload32( unsigned *data,
 		scaled_height = 1;
 	}
 
-
-
 	//
 	// clamp to the current upper OpenGL limit
 	// scale both axis down equally so we don't have to
@@ -1301,7 +1219,6 @@ static void Upload32( unsigned *data,
 					int r, g, b;
 					vec3_t rgb;
 					byte alfa = LUMA(scan[i*4], scan[i*4 + 1], scan[i*4 + 2]);
-					//byte alfa = (scan[i*4]+ scan[i*4 + 1]+ scan[i*4 + 2]) / 3;
 
 					r = scan[i*4 + 0];
 					g = scan[i*4 + 1];
@@ -1409,152 +1326,11 @@ static void Upload32( unsigned *data,
 
 	}
 
-
-	if(r_textureDither->integer)		// possibly the stupidest texture dithering ever
-	{
-#ifdef DONTEVENTHINKABOUTTHIS
-		int passes = r_textureDither->integer;
-		int that;
-		/* LEIFX FILTER C PORT PROTOTYPE SCRATCH AREA 
-			No vectors, only ints ints ints  			Obviously can be refactored with SSE */
-#define FILTCAP (0.075 * 255)
-#define FILTCAPG (FILTCAP / 2)
-		for (that=0;that<passes;that++){
-
-			for ( i = 0; i < c-1; i++ )
-			{
-				int ren;
-				int r1,g1,b1;	
-				int r2,g2,b2;	
-				int rd,gd,bd;	
+	// texturdither was here, will return properly someday.
 	
-			/*  Grab Pixels to Sample From */
-				r1 = scan[i*4]; 
-				g1 = scan[i*4+1]; 
-				b1 = scan[i*4+2]; 
-				
-				r2 = scan[(i+1)*4];
-				g2 = scan[(i+1)*4 + 1];
-				b2 = scan[(i+1)*4 + 2];
-	
-			/*  Find differences */
-	
-				rd = r2 - r1;
-				gd = g2 - g1;
-				bd = b2 - b1;
-	
-				if (rd > FILTCAP ) 	rd = FILTCAP;
-				if (gd > FILTCAPG) 	gd = FILTCAPG;
-				if (bd > FILTCAP ) 	bd = FILTCAP;
-	
-				if (rd < -FILTCAP ) 	rd = -FILTCAP;
-				if (gd < -FILTCAPG) 	gd = -FILTCAPG;
-				if (bd < -FILTCAP ) 	bd = -FILTCAP;
-	
-			/*  Add our Differences  */
-	
-				r1 += (rd/3);
-				g1 += (gd/3);
-				b1 += (bd/3);
-	
-			/*  Obligatory clamping part  */
-				if (r1 < 0) r1 = 0;
-				if (g1 < 0) g1 = 0;
-				if (b1 < 0) b1 = 0;
-		
-				if (r1 > 255) r1 = 255;
-				if (g1 > 255) g1 = 255;
-				if (b1 > 255) b1 = 255;
-	
-				if (r2 < 0) r2 = 0;
-				if (g2 < 0) g2 = 0;
-				if (b2 < 0) b2 = 0;
-		
-				if (r2 > 255) r2 = 255;
-				if (g2 > 255) g2 = 255;
-				if (b2 > 255) b2 = 255;
-	
-	
-	
-			/*  Put processed image back into the buffer  */
-				scan[i*4] = r1;
-				scan[i*4 + 1] = g1;
-				scan[i*4 + 2] =  b1;
-	
-			}
-	
-		}
-#endif
-		
-		for ( i = 0; i < c; i++ )
-		{
-			int ren = (crandom() * 4);
-			int rg,gg,bb;
-			rg = scan[i*4]; 
-			gg = scan[i*4+1]; 
-			bb = scan[i*4+2]; 
-			
-			//if ((rg / 64) != ceil(rg / 64))
-				rg = scan[i*4] + ren;
-			//if ((gg / 32) != ceil(gg / 32))
-				gg = scan[i*4 + 1] + (ren / 2);
-			//if ((bb / 64) != ceil(bb / 64))
-				bb = scan[i*4 + 2] + ren;
-
-		if (rg < 0) rg = 0;
-		if (gg < 0) gg = 0;
-		if (bb < 0) bb = 0;
-
-		if (rg > 255) rg = 255;
-		if (gg > 255) gg = 255;
-		if (bb > 255) bb = 255;
-
-		scan[i*4] = rg;
-		scan[i*4 + 1] = gg;
-		scan[i*4 + 2] =  bb;
-		}
-		
-	}
-
-
-
-
-	if( r_greyscale->value )
-	{
-			// leilei - replaced with saturation processing
-		for ( i = 0; i < c; i++ )
-		{
-				float saturated = (scan[i*4] * 0.333) + (scan[i*4 + 1] * 0.333) + (scan[i*4 + 2] * 0.333);
-				scan[i*4] 	= saturated + (scan[i*4] - saturated) 	  * (1-r_greyscale->value);
-				scan[i*4 + 1] 	= saturated + (scan[i*4 + 1] - saturated) * (1-r_greyscale->value);
-				scan[i*4 + 2] 	= saturated + (scan[i*4 + 2] - saturated) * (1-r_greyscale->value);
-	
-				if (scan[i*4]  		> 255) scan[i*4]      	= 255;
-				if (scan[i*4 + 1]  	> 255) scan[i*4 + 1]  	= 255;
-				if (scan[i*4 + 2]  	> 255) scan[i*4 + 2]  	= 255;
-		}
-	}
-
 	if(lightMap)
 	{
-		if( r_monolightmaps->value )
-		{
-			for ( i = 0; i < c; i++ )
-			{
-					float saturated = (scan[i*4] * 0.333) + (scan[i*4 + 1] * 0.333) + (scan[i*4 + 2] * 0.333);
-					scan[i*4] 	= saturated + (scan[i*4] - saturated) 	  * (1-r_monolightmaps->value);
-					scan[i*4 + 1] 	= saturated + (scan[i*4 + 1] - saturated) * (1-r_monolightmaps->value );
-					scan[i*4 + 2] 	= saturated + (scan[i*4 + 2] - saturated) * (1-r_monolightmaps->value );
-		
-					if (scan[i*4]  		> 255) scan[i*4]      	= 255;
-					if (scan[i*4 + 1]  	> 255) scan[i*4 + 1]  	= 255;
-					if (scan[i*4 + 2]  	> 255) scan[i*4 + 2]  	= 255;
-			}
-		}
-
-		if(r_greyscale->integer)
-			internalFormat = GL_LUMINANCE;
-		else if(r_monolightmaps->integer)
+		if(r_monolightmaps->integer)
 			internalFormat = GL_LUMINANCE;
 		else
 			internalFormat = GL_RGB;
@@ -1617,16 +1393,6 @@ static void Upload32( unsigned *data,
 		// select proper internal format
 		if ( samples == 3 )
 		{
-			if(r_greyscale->integer)
-			{
-				if(r_texturebits->integer == 16 || forceBits == 16)
-					internalFormat = GL_LUMINANCE8;
-				else if(r_texturebits->integer == 32 || forceBits == 32)
-					internalFormat = GL_LUMINANCE16;
-				else
-					internalFormat = GL_LUMINANCE;
-			}
-			else
 			{
 				if ( glConfig.textureCompression == TC_S3TC_ARB )
 				{
@@ -1667,16 +1433,6 @@ static void Upload32( unsigned *data,
 		}
 		else if ( samples == 4 )
 		{
-			if(r_greyscale->integer)
-			{
-				if(r_texturebits->integer == 16 || forceBits == 16)
-					internalFormat = GL_LUMINANCE8_ALPHA8;
-				else if(r_texturebits->integer == 32 || forceBits == 32)
-					internalFormat = GL_LUMINANCE16_ALPHA16;
-				else
-					internalFormat = GL_LUMINANCE_ALPHA;
-			}
-			else
 			{
 				if ( glConfig.textureCompression == TC_S3TC_ARB )
 				{
@@ -2217,12 +1973,6 @@ image_t *R_CreateImage( const char *name, byte *pic, int width, int height,
 	}
 
 	GL_Bind(image);
-
-	// leilei - texture dumping
-	if (r_texdump->integer) {
-		COM_StripExtension( name, dumpname, MAX_QPATH );	// leilei - transfer name for texdump
-		DumpTex( (unsigned *)pic, image->width, image->height);
-	}
 
 	if (paletteavailable && r_texturebits->integer == 8 && !isLightmap && !depthimage && !force32upload) {
 		Upload8( (unsigned *)pic, image->width, image->height, 

@@ -126,6 +126,7 @@ typedef enum {
 
 int	softwaremode;	// leilei - detect for software mode
 int	voodootype;	// leilei - detect for voodoo revision
+char	extensions_string_full [BIG_INFO_STRING]; // leilei - gl extensions crash workaround
 
 /** From renderer_opengl2 (v28) */
 static qboolean GLimp_HaveExtension(const char *ext)
@@ -330,6 +331,11 @@ void GLimp_InitExtraExtensions()
 
 	Q_strncpyz( buf, glConfig.renderer_string, sizeof(buf) );
 	Q_strlwr( buf );
+
+	// leilei - we are  done with our extensions string, if it's too long we can just trim it so we won't hardlock old qvms with an overflow.
+	Q_strncpyz( extensions_string_full, (char *) qglGetString (GL_EXTENSIONS), sizeof( glConfig.extensions_string ) ); // copy to a global for gfxinfo
+	char	butt[640]; 
+	Q_strncpyz( glConfig.extensions_string, (char *) qglGetString (GL_EXTENSIONS), sizeof( butt ) );
 
 
 	//

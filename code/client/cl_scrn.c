@@ -84,6 +84,35 @@ void SCR_AdjustFrom640( float *x, float *y, float *w, float *h ) {
 	}
 }
 
+
+/*
+================
+SCR_AdjustFrom480
+
+leilei - Adjusted for resolution and screen aspect ratio.... but from vertical only so the aspect is ok
+================
+*/
+void SCR_AdjustFrom480( float *x, float *y, float *w, float *h ) {
+	float	yscale;
+
+	// scale for screen sizes
+	yscale = cls.glconfig.vidHeight / 480.0;
+
+	if ( x ) {
+		*x *= yscale;
+	}
+	if ( y ) {
+		*y *= yscale;
+	}
+	if ( w ) {
+		*w *= yscale;
+	}
+	if ( h ) {
+		*h *= yscale;
+	}
+}
+
+
 /*
 ================
 SCR_FillRect
@@ -157,32 +186,78 @@ static void SCR_DrawChar( int x, int y, float size, int ch ) {
 ** SCR_DrawSmallChar
 ** small chars are drawn at native screen resolution
 */
-void SCR_DrawSmallChar( int x, int y, int ch ) {
+void SCR_DrawSmallChar( int x, int y, int ch, int scalemode ) {
 	int row, col;
 	float frow, fcol;
 	float size;
 
-	ch &= 255;
+	if ((scalemode) && (cl_consoleScale->integer) && (cls.glconfig.vidWidth > SCREEN_WIDTH))
+	{
+		// leilei - ideally, I want to have the same amount of lines as 640x480 on any higher resolution to keep it readable,
+		// while horizontally it's also like 640x480 but keeping up a gap to the right so the characters are still 1:2 aspect.
+		// like idTech 4.
+		// in 640x480 on a normal pulled down console, there are 12 lines, 6.5 lines on a half pull, and 29 for a full console
+		int row, col;
+		float frow, fcol;
+		float	ax, ay, aw, ah;
+		float size;
+		ch &= 255;
+	
+		if ( ch == ' ' ) {
+			return;
+		}
+	
+		if ( y < -SMALLCHAR_HEIGHT ) {
+			return;
+		}
+	
+		ax = x;
+		ay = y;
+		aw = SMALLCHAR_WIDTH ;
+		ah = SMALLCHAR_HEIGHT;
+		if (scalemode == 2)
+		SCR_AdjustFrom480( &ax, &ay, &aw, &ah );
+		else
+		SCR_AdjustFrom640( &ax, &ay, &aw, &ah );
 
-	if ( ch == ' ' ) {
-		return;
+		row = ch>>4;
+		col = ch&15;
+	
+		frow = row*0.0625;
+		fcol = col*0.0625;
+		size = 0.0625;
+	
+		re.DrawStretchPic( ax, ay, aw, ah,
+						   fcol, frow, 
+						   fcol + size, frow + size, 
+						   cls.charSetShader );
+	
+	
 	}
-
-	if ( y < -SMALLCHAR_HEIGHT ) {
-		return;
+	else
+	{
+		ch &= 255;
+	
+		if ( ch == ' ' ) {
+			return;
+		}
+	
+		if ( y < -SMALLCHAR_HEIGHT ) {
+			return;
+		}
+	
+		row = ch>>4;
+		col = ch&15;
+	
+		frow = row*0.0625;
+		fcol = col*0.0625;
+		size = 0.0625;
+	
+		re.DrawStretchPic( x, y, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT,
+						   fcol, frow, 
+						   fcol + size, frow + size, 
+						   cls.charSetShader );
 	}
-
-	row = ch>>4;
-	col = ch&15;
-
-	frow = row*0.0625;
-	fcol = col*0.0625;
-	size = 0.0625;
-
-	re.DrawStretchPic( x, y, SMALLCHAR_WIDTH, SMALLCHAR_HEIGHT,
-					   fcol, frow, 
-					   fcol + size, frow + size, 
-					   cls.charSetShader );
 }
 
 
@@ -286,7 +361,7 @@ void SCR_DrawSmallStringExt( int x, int y, const char *string, float *setColor, 
 				continue;
 			}
 		}
-		SCR_DrawSmallChar( xx, y, *s );
+		SCR_DrawSmallChar( xx, y, *s, 2 );
 		xx += SMALLCHAR_WIDTH;
 		s++;
 	}

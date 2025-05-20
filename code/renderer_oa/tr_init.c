@@ -71,7 +71,6 @@ cvar_t	*r_skipBackEnd;
 cvar_t	*r_stereoEnabled;
 cvar_t	*r_anaglyphMode;
 
-cvar_t	*r_greyscale;
 cvar_t	*r_monolightmaps;
 
 cvar_t	*r_ignorehwgamma;
@@ -196,7 +195,6 @@ cvar_t	*r_flareMethod;		// method of flare intensity
 cvar_t	*r_flareQuality;	// testing quality of the flares.
 cvar_t	*r_flareSun;		// type of flare to use for the sun
 cvar_t	*r_flareDelay;		// time delay for medium quality flare testing
-cvar_t	*r_flaresMotionBlur;	// Stretch blur
 
 cvar_t	*r_specMode;
 //cvar_t	*r_waveMode;
@@ -205,34 +203,24 @@ cvar_t	*r_flaresDlightShrink;
 cvar_t	*r_flaresDlightFade;
 cvar_t	*r_flaresDlightOpacity;
 cvar_t	*r_flaresDlightScale;
+
+cvar_t	*r_lightmapColorNorm;
+
 //cvar_t	*r_flaresSurfradii;
 cvar_t	*r_alternateBrightness;		// leilei - linux overbright fix
 cvar_t	*r_mockvr;		// Leilei - for debugging PVR only!
-cvar_t	*r_parseStageSimple;	// Leilei - for debugging PVR only!
 cvar_t	*r_leifx;		// Leilei - leifx nostalgia filter
-cvar_t	*r_modelshader;		// Leilei
+cvar_t	*r_shadeMethod;		// Leilei
 cvar_t	*r_particles;		// Leilei - particle effects motif
 
-cvar_t	*r_ntsc;		// Leilei - ntsc / composite signals
-//cvar_t	*r_tvMode;		// Leilei - tv fake mode
-cvar_t	*r_retroAA;		// Leilei - old console AA
-cvar_t	*r_anime;		// Leilei - anime filter
-cvar_t	*r_palletize;		// Leilei - palletization
+cvar_t	*r_skytess;	// leilei - lower detail of skies
+
 cvar_t	*r_leidebug;		// Leilei - debug
 cvar_t	*r_leidebugeye;		// Leilei - eye debug
 
 cvar_t	*r_suggestiveThemes;		// leilei - mature content control
 
-//cvar_t	*r_motionblur;		// Leilei - motionblur
-cvar_t	*r_motionblur_fps;		// Leilei - motionblur framerated
-
-cvar_t	*r_slowness;		// Leilei - the cvar that slows everything down. use with caution.
-cvar_t	*r_slowness_cpu;		// Leilei
-cvar_t	*r_slowness_gpu;		// Leilei
-
 cvar_t	*r_textureDither;	// leilei - Dithered texture
-
-cvar_t	*r_texdump;		// Leilei - debug - texture dump as they load, players should never need to use this!
 
 // leilei - fallback shader hack
 
@@ -240,10 +228,6 @@ cvar_t	*r_texdump;		// Leilei - debug - texture dump as they load, players shoul
 
 
 #ifdef USE_FALLBACK_GLSL
-extern const char *fallbackShader_anime_vp;
-extern const char *fallbackShader_anime_fp;
-extern const char *fallbackShader_anime_film_vp;
-extern const char *fallbackShader_anime_film_fp;
 extern const char *fallbackShader_brightness_vp;
 extern const char *fallbackShader_brightness_fp;
 extern const char *fallbackShader_leifx_dither_vp;
@@ -254,10 +238,6 @@ extern const char *fallbackShader_leifx_gamma_vp;
 extern const char *fallbackShader_leifx_gamma_fp;
 extern const char *fallbackShader_leifx_vgasignal_vp;
 extern const char *fallbackShader_leifx_vgasignal_fp;
-extern const char *fallbackShader_motionblur_accum_vp;
-extern const char *fallbackShader_motionblur_accum_fp;
-extern const char *fallbackShader_motionblur_post_vp;
-extern const char *fallbackShader_motionblur_post_fp;
 #endif
 
 
@@ -587,23 +567,11 @@ RB_TakeScreenshotCmd
 ==================
 */
 
-extern int tvWidth;
-extern int tvHeight;
-
 const void *RB_TakeScreenshotCmd( const void *data )
 {
 	const screenshotCommand_t	*cmd;
 
 	cmd = (const screenshotCommand_t *)data;
-
-	// leilei - hack for tvmode
-	if (r_tvMode->integer > -1) {
-
-		if (cmd->jpeg)
-			RB_TakeScreenshotJPEG( cmd->x, cmd->y, tvWidth, tvHeight, cmd->fileName);
-		else
-			RB_TakeScreenshot( cmd->x, cmd->y, tvWidth, tvHeight, cmd->fileName);
-	}
 
 	if (cmd->jpeg)
 		RB_TakeScreenshotJPEG( cmd->x, cmd->y, cmd->width, cmd->height, cmd->fileName);
@@ -1029,6 +997,7 @@ void R_PrintLongString(const char *string)
 GfxInfo_f
 ================
 */
+extern char	extensions_string_full [BIG_INFO_STRING]; // leilei - gl extensions crash workaround
 void GfxInfo_f( void )
 {
 	const char *enablestrings[] = {
@@ -1044,7 +1013,7 @@ void GfxInfo_f( void )
 	ri.Printf( PRINT_ALL, "GL_RENDERER: %s\n", glConfig.renderer_string );
 	ri.Printf( PRINT_ALL, "GL_VERSION: %s\n", glConfig.version_string );
 	ri.Printf( PRINT_ALL, "GL_EXTENSIONS: " );
-	R_PrintLongString( glConfig.extensions_string );
+	R_PrintLongString( extensions_string_full );//R_PrintLongString( glConfig.extensions_string ); // leilei - gl extensions crash workaround
 	ri.Printf( PRINT_ALL, "\n" );
 	ri.Printf( PRINT_ALL, "GL_MAX_TEXTURE_SIZE: %d\n", glConfig.maxTextureSize );
 	ri.Printf( PRINT_ALL, "GL_MAX_TEXTURE_UNITS_ARB: %d\n", glConfig.numTextureUnits );
@@ -1202,10 +1171,9 @@ void R_Register( void )
 	r_subdivisions = ri.Cvar_Get ("r_subdivisions", "4", CVAR_ARCHIVE | CVAR_LATCH);
 	r_stereoEnabled = ri.Cvar_Get( "r_stereoEnabled", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	r_ignoreFastPath = ri.Cvar_Get( "r_ignoreFastPath", "1", CVAR_ARCHIVE | CVAR_LATCH );
-	r_greyscale = ri.Cvar_Get("r_greyscale", "0", CVAR_ARCHIVE | CVAR_LATCH);
-	ri.Cvar_CheckRange(r_greyscale, 0, 1, qfalse);
-
 	r_monolightmaps = ri.Cvar_Get("r_monolightmaps", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	ri.Cvar_CheckRange(r_monolightmaps, 0, 1, qfalse);
+
 
 	//
 	// temporary latched variables that can only change over a restart
@@ -1262,6 +1230,7 @@ void R_Register( void )
 	r_nocurves = ri.Cvar_Get ("r_nocurves", "0", CVAR_CHEAT );
 	r_drawworld = ri.Cvar_Get ("r_drawworld", "1", CVAR_CHEAT );
 	r_lightmap = ri.Cvar_Get ("r_lightmap", "0", 0 );
+
 	r_portalOnly = ri.Cvar_Get ("r_portalOnly", "0", CVAR_CHEAT );
 
 
@@ -1322,44 +1291,29 @@ void R_Register( void )
 	r_flareSun = ri.Cvar_Get( "r_flareSun", "0" , CVAR_ARCHIVE);	// it's 0 because mappers expect 0.
 	r_flareDelay = ri.Cvar_Get( "r_flareDelay", "100" , CVAR_CHEAT);	// update delay for flare pixel read checking.
 
-	r_flaresMotionBlur = ri.Cvar_Get( "r_flaresMotionBlur", "0" , CVAR_ARCHIVE );	// fake motion blur on flares
-
-
 
 	r_mockvr = ri.Cvar_Get( "r_mockvr", "0" , CVAR_CHEAT);
-	r_parseStageSimple = ri.Cvar_Get( "r_parseStageSimple", "0" , CVAR_CHEAT);
 	r_leifx = ri.Cvar_Get( "r_leifx", "0" , CVAR_ARCHIVE | CVAR_LATCH);
-	r_modelshader = ri.Cvar_Get( "r_modelshader", "0" , CVAR_ARCHIVE | CVAR_LATCH);		// leilei - load and use special shaders for lightDiffuse models
+	r_shadeMethod = ri.Cvar_Get( "r_shadeMethod", "0" , CVAR_ARCHIVE);		// leilei - Alternative lightingDiffuse
+
+	r_skytess = ri.Cvar_Get( "r_skyTess", "8", CVAR_ARCHIVE );			// leilei - sky detail adjustment
+
 	r_detailTextureScale = ri.Cvar_Get( "r_detailtextureScale", "0", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - adjust scale of detail textures
 	r_detailTextureLayers = ri.Cvar_Get( "r_detailtextureLayers", "0", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - add more detail layers
 
-	r_ntsc = ri.Cvar_Get( "r_ntsc", "0" , CVAR_ARCHIVE | CVAR_LATCH);			// leilei - ntsc filter
-
-	//r_tvMode = ri.Cvar_Get( "r_tvMode", "0" , CVAR_ARCHIVE | CVAR_LATCH);
-	r_retroAA = ri.Cvar_Get( "r_retroAA", "0" , CVAR_ARCHIVE | CVAR_LATCH);
-
 	r_suggestiveThemes = ri.Cvar_Get( "r_suggestiveThemes", "1" , CVAR_ARCHIVE | CVAR_LATCH);
 
-//	r_motionblur = ri.Cvar_Get( "r_motionblur", "0" , CVAR_ARCHIVE | CVAR_LATCH);
-	r_motionblur_fps = ri.Cvar_Get( "r_motionblur_fps", "60", 0);
-
-	r_anime = ri.Cvar_Get( "r_anime", "0" , CVAR_ARCHIVE | CVAR_LATCH);
-	r_palletize = ri.Cvar_Get( "r_palletize", "0" , CVAR_ARCHIVE | CVAR_LATCH);
 	r_leidebug = ri.Cvar_Get( "r_leidebug", "0" , CVAR_CHEAT);
 	r_particles = ri.Cvar_Get( "r_particles", "0" , CVAR_ARCHIVE | CVAR_LATCH);
 	r_leidebugeye = ri.Cvar_Get( "r_leidebugeye", "0" , CVAR_CHEAT);
-	r_slowness = ri.Cvar_Get( "r_slowness", "0" , CVAR_ARCHIVE);	// it's 0 because you want it to be the fastest possible by default.
-	r_slowness_cpu = ri.Cvar_Get( "r_slowness_cpu", "300" , CVAR_ARCHIVE);	// it's 0 because you want it to be the fastest possible by default.
-	r_slowness_gpu = ri.Cvar_Get( "r_slowness_gpu", "96" , CVAR_ARCHIVE);	// it's 0 because you want it to be the fastest possible by default.
 
 	r_iconmip = ri.Cvar_Get ("r_iconmip", "0", CVAR_ARCHIVE | CVAR_LATCH );		// leilei - icon mip
 	r_iconBits = ri.Cvar_Get ("r_iconBits", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - icon bits
 
 	r_lightmapBits = ri.Cvar_Get ("r_lightmapBits", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - lightmap color bits
+	r_lightmapColorNorm = ri.Cvar_Get ("r_lightmapColorNorm", "1", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - lightmap color normalization
 
 	r_textureDither = ri.Cvar_Get ("r_textureDither", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - dithered textures
-
-	r_texdump = ri.Cvar_Get( "r_texdump", "0", CVAR_CHEAT );	// leilei - debug - texture dumping
 
 	// make sure all the commands added here are also
 	// removed in R_Shutdown
@@ -1422,12 +1376,6 @@ static glslProgram_t *R_GLSL_AllocProgram(void)
 	program->u_ViewOrigin					= -1;
 	program->u_Normal					= -1;
 
-	program->u_mpass1						= -1;
-	program->u_mpass2						= -1;
-	program->u_mpass3						= -1;
-	program->u_mpass4						= -1;
-
-
 	program->rubyTextureSize				= -1;
 	program->rubyInputSize					= -1;
 	program->rubyOutputSize					= -1;
@@ -1489,21 +1437,6 @@ void R_GLSL_Init(void)
 	Q_strncpyz(programFragmentObjects[0], "glsl/sky_fp.glsl", sizeof(programFragmentObjects[0]));
 	tr.skyProgram = RE_GLSL_RegisterProgram("sky", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
 
-
-
-	Q_strncpyz(programVertexObjects[0], "glsl/anime_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/anime_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.animeProgram = RE_GLSL_RegisterProgram("anime", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
-
-	Q_strncpyz(programVertexObjects[0], "glsl/anime_film_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/anime_film_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.animeFilmProgram = RE_GLSL_RegisterProgram("anime_film", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
-
-	Q_strncpyz(programVertexObjects[0], "glsl/palette_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/palette_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.paletteProgram = RE_GLSL_RegisterProgram("palette", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
-
-
 	Q_strncpyz(programVertexObjects[0], "glsl/leifx_dither_vp.glsl", sizeof(programVertexObjects[0]));
 	Q_strncpyz(programFragmentObjects[0], "glsl/leifx_dither_fp.glsl", sizeof(programFragmentObjects[0]));
 	tr.leiFXDitherProgram = RE_GLSL_RegisterProgram("leifx_dither", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
@@ -1519,33 +1452,58 @@ void R_GLSL_Init(void)
 	Q_strncpyz(programFragmentObjects[0], "glsl/leifx_filter_fp.glsl", sizeof(programFragmentObjects[0]));
 	tr.leiFXFilterProgram = RE_GLSL_RegisterProgram("leifx_filter", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
 
-	Q_strncpyz(programVertexObjects[0], "glsl/motionblur_accum_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/motionblur_accum_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.motionBlurProgram = RE_GLSL_RegisterProgram("motionblur_accum", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
-
-	Q_strncpyz(programVertexObjects[0], "glsl/motionblur_post_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/motionblur_post_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.motionBlurPostProgram = RE_GLSL_RegisterProgram("motionblur_post", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
-
 	Q_strncpyz(programVertexObjects[0], "glsl/brightness_vp.glsl", sizeof(programVertexObjects[0]));
 	Q_strncpyz(programFragmentObjects[0], "glsl/brightness_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.BrightnessProgram = RE_GLSL_RegisterProgram("brightness", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
+	if (!(tr.BrightnessProgram = RE_GLSL_RegisterProgram("brightness", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1)))
+	{
+		// load it through this code
+	ri.Printf( PRINT_ALL, "----- Trying to load Brightness Shader internally!!! \n" );
 
-	Q_strncpyz(programVertexObjects[0], "glsl/crt_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/crt_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.CRTProgram = RE_GLSL_RegisterProgram("crt", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
+		const GLchar *brightnessfp = \	
+			"#version 120 \n"
+			"uniform sampler2D u_Texture0; \n"
+			"varying vec2 texture_coordinate;\n"
+			"uniform float u_CC_Overbright; \n"
+			"uniform float u_CC_Gamma; \n"
+			"void main()\n"
+			"{\n"
+    			"gl_FragColor = texture2D(u_Texture0, texture_coordinate); \n"
+			"vec3 color;\n"
+			"vec3 colord;\n"
+			"int coloredr;\n"
+			"int coloredg;\n"
+			"int coloredb;\n"
+			"color.r = 1;\n"
+			"color.g = 1;\n"
+			"color.b = 1;\n"
+			"int yeh = 0;\n"
+			"float ohyes;\n"
+			"// Overbrights\n"
+    			"gl_FragColor *= (u_CC_Overbright + 1);\n"
+			"// Gamma Correction\n"
+			"float gamma = u_CC_Gamma;\n"
+			"gl_FragColor.r = pow(gl_FragColor.r, 1.0 / gamma);\n"
+			"gl_FragColor.g = pow(gl_FragColor.g, 1.0 / gamma);\n"
+			"gl_FragColor.b = pow(gl_FragColor.b, 1.0 / gamma);\n"
+			"}\n";
 
-	Q_strncpyz(programVertexObjects[0], "glsl/ntsc_encode_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/ntsc_encode_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.NTSCEncodeProgram = RE_GLSL_RegisterProgram("ntsc_encode", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
+		const GLchar *brightnessvp = \
+			"varying vec2 texture_coordinate;\n"
+			"varying vec2 texture_coordinate2;\n"
+			"varying vec2 texture_coordinate3;\n"
+			"varying vec2 texture_coordinate4;\n"
+			"varying vec2 texture_coordinate5;\n"
+			"varying float scale;\n"
+			"uniform float u_CC_Overbright;\n"
+			"uniform float u_CC_Gamma;\n"
+			"void main()\n"
+			"{\n"
+	    		"gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; \n"
+	    		"texture_coordinate = vec2(gl_MultiTexCoord0); \n"
+			"}\n";
 
-	Q_strncpyz(programVertexObjects[0], "glsl/ntsc_decode_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/ntsc_decode_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.NTSCDecodeProgram = RE_GLSL_RegisterProgram("ntsc_decode", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
-
-	Q_strncpyz(programVertexObjects[0], "glsl/ntsc_bleed_vp.glsl", sizeof(programVertexObjects[0]));
-	Q_strncpyz(programFragmentObjects[0], "glsl/ntsc_bleed_fp.glsl", sizeof(programFragmentObjects[0]));
-	tr.NTSCBleedProgram = RE_GLSL_RegisterProgram("ntsc_bleed", (const char *)programVertexObjects, 1, (const char *)programFragmentObjects, 1);
+			tr.BrightnessProgram = RE_GLSL_RegisterProgramRaw("brightnessInternal", (const char *)brightnessvp, 1, (const char *)brightnessfp, 1);
+	}
 
 	if (strcmp( (const char *)r_postprocess->string, "none" )) {
 		sprintf(p,"glsl/%s_vp.glsl",r_postprocess->string);
@@ -1621,7 +1579,6 @@ void R_Init( void )
 	R_BloomInit();
 	R_PostprocessingInit();
 	R_AltBrightnessInit();	// leilei	- alternate brightness
-	R_WaterInit();		// leilei - water test
 	max_polys = r_maxpolys->integer;
 	if (max_polys < MAX_POLYS)
 		max_polys = MAX_POLYS;

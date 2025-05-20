@@ -43,7 +43,10 @@ void sound_deinit(void);
 
 
 
-
+static float fadey;
+extern cvar_t *s_xmp_startPattern;
+static int startpat;
+static int gopat;
 extern	int	samplingrate;		// from snd_dma
 
 void S_XMP_StartSong ( void )
@@ -57,6 +60,29 @@ void S_XMP_EndSong ( void )
 {
 
 
+
+}
+
+
+// TODO: A callback to set this appropriately from game context (monster sight, level triggers)
+void S_XMP_CheckForFade ( void )
+{
+	gopat = s_xmp_startPattern->integer;
+
+	if ((gopat != startpat))
+	{
+		fadey -= 0.025f;
+	//	Com_Printf("AHHHFADING TO PATTERN %i!!! %f\n", startpat, fadey);
+		xmp_set_player(xmpsong, XMP_PLAYER_VOLUME, (fadey * 128));
+	}
+
+	if ((startpat != gopat) && (fadey < 0.01))
+	{
+		startpat = gopat;
+		xmp_set_position(xmpsong, startpat);
+		xmp_set_player(xmpsong, XMP_PLAYER_VOLUME, 128);
+		fadey = 1;
+	}
 
 }
 
@@ -79,7 +105,7 @@ S_XMP_CodecOpenStream
 =================
 */
 
-// FIXME: there's a memory leak here if you start the same song many many many many times.
+// FIXME: there's a memory leak here if you start the same song many many many many times?
 snd_stream_t *S_XMP_CodecOpenStream(const char *filename)
 {
 	// First let's close whatever song we had....
@@ -123,14 +149,21 @@ snd_stream_t *S_XMP_CodecOpenStream(const char *filename)
 		xmpsong = xmp_create_context();
 		int itsloaded = 0;
 
-		itsloaded = xmp_load_module_from_memory(xmpsong, buffer, 0);
+		itsloaded = xmp_load_module_from_memory(xmpsong, buffer, thelength);
 
 		// Free our memory and close the file.
 		Hunk_FreeTempMemory(buffer);
 		FS_FCloseFile(file);		// unfortunately these do not help with the leak
 
 		if (itsloaded == 0)
-			itsloaded = xmp_start_player(xmpsong, xmpspeed, 0);	// TODO: do sample rate of the mixer.
+		{
+			itsloaded = xmp_start_player(xmpsong, xmpspeed, 0);	
+			startpat=s_xmp_startPattern->integer;
+			gopat = startpat;
+			fadey = 1.0;
+			xmp_set_player(xmpsong, XMP_PLAYER_VOLUME, 128);
+			xmp_set_position(xmpsong, startpat);
+		}
 
 		if (itsloaded == 0) {
 			//	Com_Printf("XMP loaded our buffer of the file %s which is %i long \n", filename, thelength);
@@ -196,6 +229,8 @@ int S_XMP_CodecReadStream(snd_stream_t *stream, int bytes, void *buffer)
 	else {
 		return 0;
 	}
+
+	S_XMP_CheckForFade();
 
 	return bytes;
 }

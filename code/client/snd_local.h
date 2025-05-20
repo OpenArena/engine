@@ -199,6 +199,8 @@ extern cvar_t *s_musicVolume;
 extern cvar_t *s_muted;
 extern cvar_t *s_doppler;
 
+extern cvar_t *s_interrupts;
+
 extern cvar_t *s_testsound;
 
 qboolean S_LoadSound( sfx_t *sfx );
@@ -238,6 +240,8 @@ extern short mulawToShort[256];
 extern short *sfxScratchBuffer;
 extern sfx_t *sfxScratchPointer;
 extern int	   sfxScratchIndex;
+
+extern cvar_t *s_xmp_startPattern;
 
 qboolean S_Base_Init( soundInterface_t *si );
 

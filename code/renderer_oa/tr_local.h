@@ -86,8 +86,6 @@ typedef struct {
 	vec3_t		axis[3];		// orientation in world
 	vec3_t		viewOrigin;		// viewParms->or.origin in local coordinates
 	float		modelMatrix[16];
-	vec3_t		viewOriginOld;		// leilei - motionBlur
-	vec3_t		viewOriginOlder;		// leilei - motionBlur
 } orientationr_t;
 
 //===============================================================================
@@ -187,6 +185,7 @@ typedef enum {
 	CGEN_FOG,				// standard fog
 	CGEN_CONST,				// fixed color
 	CGEN_VERTEX_LIT,			// leilei - tess.vertexColors * tr.identityLight * ambientlight*directlight
+	CGEN_MATERIAL,				// leilei - material system
 	CGEN_LIGHTING_DIFFUSE_SPECULAR		// leilei - LIGHTING_DIFFUSE, capped by specular exponent
 } colorGen_t;
 
@@ -196,8 +195,6 @@ typedef enum {
 	TCGEN_LIGHTMAP,
 	TCGEN_TEXTURE,
 	TCGEN_ENVIRONMENT_MAPPED,
-	TCGEN_ENVIRONMENT_CELSHADE_MAPPED,
-	TCGEN_ENVIRONMENT_CELSHADE_LEILEI,	// leilei - cel hack
 	TCGEN_ENVIRONMENT_MAPPED_WATER,	// leilei - fake water reflection
 	TCGEN_EYE_LEFT,				// eyes
 	TCGEN_EYE_RIGHT,			// eyes
@@ -265,6 +262,17 @@ typedef enum {
 	TMOD_ENTITY_TRANSLATE
 } texMod_t;
 
+// leilei - rgbMod - color modulations
+typedef enum {
+	CMOD_BAD,
+	CMOD_GLOW,
+	CMOD_LIGHTING,
+	CMOD_NORMALIZETOALPHA,
+	CMOD_NORMALIZETOALPHAFAST,
+	CMOD_UVCOL,
+	CMOD_OPAQUE
+} colorMod_t;
+
 #define	MAX_SHADER_DEFORMS	3
 typedef struct {
 	deform_t	deformation;			// vertex coordinate modification type
@@ -308,7 +316,7 @@ typedef struct {
 } texModInfo_t;
 
 
-#define	MAX_IMAGE_ANIMATIONS	8
+#define	MAX_IMAGE_ANIMATIONS	16 // leilei - was 8
 
 typedef struct {
 	image_t			*image[MAX_IMAGE_ANIMATIONS];
@@ -355,11 +363,21 @@ typedef struct {
 
 	int			isGLSL;
 	int			isBlend;			// leilei - for leifx
-	qboolean		isLeiShade;			// leilei - for the automatic shader
 	qhandle_t		program;
 
 	int			imgWidth;
 	int			imgHeight;		//leilei for glsl shaders
+
+	colorMod_t		rgbMod;			// leilei - rgbMod
+	int			rgbModCol;
+	int			rgbModMode;
+
+	int			matAmb;			// leilei - material ambience
+	int			matDif;			// leilei - material diffuse
+	int			matSpec;		// leilei - material specular
+	int			matEmis;		// leilei - material emissive
+	int			matHard;		// leilei - material specular hardness
+	int			matAlpha;		// leilei - material alpha
 
 } shaderStage_t;
 
@@ -858,7 +876,7 @@ typedef struct {
 	unsigned		v_FogColor;
 
 	GLint			u_Greyscale;
-	int				v_Greyscale;
+	int			v_Greyscale;
 
 	GLint			u_IdentityLight;
 	float			v_IdentityLight;
@@ -907,22 +925,6 @@ typedef struct {
 	GLfloat			u_zFar;
 	GLint			u_ActualScreenSizeX;
 	GLint			u_ActualScreenSizeY;
-
-// leilei - motion blur vars
-
-	GLfloat			u_MotionBlurX;// OBSOLETE
-	GLfloat			u_MotionBlurY;// OBSOLETE
-
-	GLint			u_ViewMotion;// OBSOLETE
-	vec3_t			v_ViewMotion;// OBSOLETE
-
-	GLint			u_mpass1;	// 1-5
-	GLint			u_mpass2;	// 6-10
-	GLint			u_mpass3;	// 11-15
-	GLint			u_mpass4;	// 16-20
-
-	GLint			u_mpasses;	// How many passes of Motion do we have anyhow?
-
 
 // leilei - 'compatibility' with ruby shader vars (HACK HACK HACK)
 
@@ -1098,17 +1100,11 @@ typedef struct {
 	qboolean	doneBloom;		// done bloom this frame
 	qboolean	donepostproc;		// done postprocess this frame
 	qboolean	doneleifx;		// leilei - done leifxing this frame
-	qboolean	doneanime;		// leilei - done animeing this frame
 	qboolean	doneAltBrightness;	// leilei - done alternate brightness this frame
-	qboolean	doneFilm;		// leilei - done film filtering this frame
 	qboolean	doneSun;		// leilei - done drawing a sun
 	qboolean	doneSunFlare;		// leilei - done drawing a sun flare
-	qboolean	donemblur;		// leilei - done motionblur this frame
 	qboolean	donewater;		// leilei - done water this frame
-	qboolean	donetv;		// leilei - tv this frame
-	qboolean	doneraa;	// leilei - done aa'ing this frame
-	qboolean	donentsc;	// leilei - done ntsc'ing this frame
-	qboolean	donepalette;		// leilei - done animeing this frame
+	qboolean	donepalette;		// leilei - done paletting this frame
 	qboolean	doneSurfaces;   // done any 3d surfaces already
 	qboolean	doneParticles;   // done any particle movement
 	qboolean	doneFlareTests;		// leilei - done testing flares
@@ -1167,16 +1163,7 @@ typedef struct {
 	qhandle_t				leiFXDitherProgram;	// leilei
 	qhandle_t				leiFXGammaProgram;	// leilei
 	qhandle_t				leiFXFilterProgram;	// leilei
-	qhandle_t				animeProgram;	// leilei
-	qhandle_t				animeFilmProgram;	// leilei
-	qhandle_t				motionBlurProgram;	// leilei
-	qhandle_t				motionBlurPostProgram;	// leilei
 	qhandle_t				BrightnessProgram;	// leilei
-	qhandle_t				CRTProgram;	// leilei
-	qhandle_t				NTSCEncodeProgram;	// leilei
-	qhandle_t				NTSCDecodeProgram;	// leilei
-	qhandle_t				NTSCBleedProgram;	// leilei
-	qhandle_t				paletteProgram;	// leilei
 
 	int						numPrograms;
 	glslProgram_t			*programs[MAX_PROGRAMS];
@@ -1362,8 +1349,6 @@ extern	cvar_t	*r_skipBackEnd;
 
 extern	cvar_t	*r_anaglyphMode;
 
-extern	cvar_t	*r_greyscale;
-
 extern	cvar_t	*r_monolightmaps;
 extern	cvar_t	*r_ignoreGLErrors;
 
@@ -1395,31 +1380,13 @@ extern	cvar_t	*r_flaresDlightFade;
 extern	cvar_t	*r_flaresDlightOpacity;
 extern	cvar_t	*r_flaresDlightScale;
 
-extern	cvar_t	*r_flaresMotionBlur;
-//extern	cvar_t	*r_flaresSurfradii;
-
 extern cvar_t	*r_alternateBrightness;		// leilei - alternate brightness
-extern cvar_t	*r_parseStageSimple;	// Leilei - handling textures into alphas
 extern cvar_t	*r_leifx;	// Leilei - leifx nostalgia filter
-extern cvar_t	*r_modelshader;	// Leilei - new model shading
+extern cvar_t	*r_shadeMethod;	// Leilei - new model shading methods
 
-
-extern cvar_t	*r_ntsc;	// Leilei - ntsc
-
-extern cvar_t	*r_tvMode;	// Leilei - tv faking mode
-extern cvar_t	*r_tvModeForceAspect;	// Leilei - retain aspect of the tv's mode
-extern cvar_t	*r_tvFilter;	// Leilei - filter to use
-
-
-extern cvar_t	*r_retroAA;	// Leilei - old console anti aliasing
 
 extern cvar_t	*r_suggestiveThemes;	// Leilei - mature content
 
-extern cvar_t	*r_motionblur;		// Leilei - motionblur
-extern cvar_t	*r_motionblur_fps;		// Leilei - motionblur framerated
-
-extern cvar_t	*r_anime;	// Leilei - anime filter
-extern cvar_t	*r_palletize;	// Leilei - anime filter
 extern cvar_t	*r_leidebug;	// Leilei - debug only!
 extern cvar_t	*r_leidebugeye;	// Leilei - debug only!
 extern cvar_t	*r_particles;	// Leilei - particles!
@@ -1428,13 +1395,14 @@ extern	cvar_t	*r_iconmip;	// leilei - icon mip - picmip for 2d icons
 extern	cvar_t	*r_iconBits;	// leilei - icon color depth for 2d icons
 
 extern	cvar_t	*r_lightmapBits;	// leilei - lightmap color depth
-
-extern	cvar_t	*r_texdump;	// leilei - texture dumping
+extern	cvar_t	*r_lightmapColorNorm;	// leilei - lightmap color normalize
 
 extern  cvar_t	*r_detailTextureScale;		// leilei - scale tweak the detail textures, 0 doesn't tweak at all.
 extern  cvar_t	*r_detailTextureLayers;		// leilei - add in more smaller detail texture layers, expensive!
 
 extern  cvar_t	*r_textureDither;		// leilei - apply dithering for lower texture bits
+
+extern cvar_t	*r_skytess;		// leilei - adjusts the subdivisions of the sky (max 8, min 1)
 
 //====================================================================
 
@@ -1919,14 +1887,6 @@ static ID_INLINE void R_GLSL_SetUniform_u_zFar(glslProgram_t *program, GLfloat v
 	qglUniform1fARB(program->u_zFar, value);
 }
 
-static ID_INLINE void R_GLSL_SetUniform_u_MotionBlurX(glslProgram_t *program, GLfloat value) {
-	qglUniform1fARB(program->u_MotionBlurX, value);
-}
-
-static ID_INLINE void R_GLSL_SetUniform_u_MotionBlurY(glslProgram_t *program, GLfloat value) {
-	qglUniform1fARB(program->u_MotionBlurY, value);
-}
-
 
 static ID_INLINE void R_GLSL_SetUniform_u_CC_Brightness(glslProgram_t *program, GLfloat value) {
 	qglUniform1fARB(program->u_CC_Brightness, value);
@@ -1952,10 +1912,6 @@ static ID_INLINE void R_GLSL_SetUniform_u_CC_Overbright(glslProgram_t *program, 
 	qglUniform1fARB(program->u_CC_Overbright, value);
 }
 
-
-static ID_INLINE void R_GLSL_SetUniform_u_mpasses(glslProgram_t *program, GLint value) {
-	qglUniform1iARB(program->u_mpasses, value);
-}
 
 static ID_INLINE void R_GLSL_SetUniform_u_ActualScreenSizeX(glslProgram_t *program, GLint value) {
 	qglUniform1iARB(program->u_ActualScreenSizeX, value);
@@ -1992,15 +1948,9 @@ static ID_INLINE void R_GLSL_SetUniform_rubyOutputSize(glslProgram_t *program, c
 //	qglUniform3fARB(program->rubyOutputSize, value, valub, 1.0);
 }
 
-
-
-static ID_INLINE void R_GLSL_SetUniform_Mpass1(glslProgram_t *program, GLint value) {qglUniform1iARB(program->u_mpass1, value);}
-static ID_INLINE void R_GLSL_SetUniform_Mpass2(glslProgram_t *program, GLint value) {qglUniform1iARB(program->u_mpass2, value);}
-static ID_INLINE void R_GLSL_SetUniform_Mpass3(glslProgram_t *program, GLint value) {qglUniform1iARB(program->u_mpass3, value);}
-static ID_INLINE void R_GLSL_SetUniform_Mpass4(glslProgram_t *program, GLint value) {qglUniform1iARB(program->u_mpass4, value);}
-
 void R_GLSL_Init(void);
 qhandle_t RE_GLSL_RegisterProgram(const char *name, const char *programVertexObjects, int numVertexObjects, const char *programFragmentObjects, int numFragmentObjects);
+qhandle_t RE_GLSL_RegisterProgramRaw(const char *name, const char *programVertexObjects, int numVertexObjects, const char *programFragmentObjects, int numFragmentObjects);
 void R_GLSL_UseProgram(qhandle_t index);
 void RB_GLSL_StageIteratorGeneric(void);
 void RB_GLSL_StageIteratorVertexLitTexture(void);
@@ -2154,13 +2104,10 @@ void	R_TransformClipToWindow( const vec4_t clip, const viewParms_t *view, vec4_t
 void	RB_DeformTessGeometry( void );
 
 void	RB_CalcEnvironmentTexCoords( float *dstTexCoords );
-void	RB_CalcCelTexCoords( float *dstTexCoords );		// leilei - cel hack
-void	RB_CalcEnvironmentTexCoordsJO( float *dstTexCoords );	// leilei
-void	RB_CalcEnvironmentTexCoordsR( float *dstTexCoords );	// leilei
+void    RB_CalcEnvironmentTexCoordsEx( float *st, int xx, int yy, int mode ); // leilei - extra envmapping
+
 void    RB_CalcEyes( float *st, qboolean theothereye); // leilei - eyes
-void	RB_CalcEnvironmentCelShadeTexCoords( float *dstTexCoords );
-void	RB_CalcEnvironmentTexCoordsNew( float *dstTexCoords );
-void	RB_CalcEnvironmentTexCoordsHW(void);
+
 void	RB_CalcFogTexCoords( float *dstTexCoords );
 void	RB_CalcScrollTexCoords( const float scroll[2], float *dstTexCoords );
 void	RB_CalcRotateTexCoords( float rotSpeed, float *dstTexCoords );
@@ -2175,19 +2122,18 @@ void	RB_CalcWaveColor( const waveForm_t *wf, unsigned char *dstColors );
 void	RB_CalcAlphaFromEntity( unsigned char *dstColors );
 void	RB_CalcAlphaFromOneMinusEntity( unsigned char *dstColors );
 void	RB_CalcStretchTexCoords( const waveForm_t *wf, float *texCoords );
-void	RB_CalcLightscaleTexCoords( float *texCoords );
 void	RB_CalcAtlasTexCoords( const atlas_t *at, float *st );
 void	RB_CalcColorFromEntity( unsigned char *dstColors );
 void	RB_CalcColorFromOneMinusEntity( unsigned char *dstColors );
 void	RB_CalcSpecularAlpha( unsigned char *alphas );
 void	RB_CalcSpecularAlphaNew( unsigned char *alphas );
+void 	RB_CalcGlowBlend( unsigned char *colors, int glowcol, int fx ); // leilei - rgbMod
+void 	RB_CalcUVColor( unsigned char *colors, int glowcol, int fx ); 	// leilei - rgbMod
+void 	RB_CalcNormalizeToAlpha( unsigned char *colors); 		// leilei - rgbMod 
 void	RB_CalcDiffuseColor( unsigned char *colors );
-void	RB_CalcUniformColor( unsigned char *colors );
-void	RB_CalcDynamicColor( unsigned char *colors );
-void	RB_CalcDiffuseColor_Specular( unsigned char *colors );	// leilei - specular hack
-void	RB_CalcFlatAmbient( unsigned char *colors ); // leilei - cel hack
-void	RB_CalcFlatDirect( unsigned char *colors ); // leilei - cel hack
-void	RB_CalcNormal( unsigned char *colors ); // leilei - normal hack
+void    RB_CalcMaterials( unsigned char *colors, int ambient, int diffuse, int specular, int emissive, int spechard, int alpha ); // leilei - materials
+
+void	RB_CalcVertLights( unsigned char *colors );	// leilei - dynamic vertex lights
 
 /*
 =============================================================
@@ -2347,12 +2293,7 @@ void RE_TakeVideoFrame( int width, int height,
 
 //Bloom Stuff
 void R_BloomInit( void );
-void R_WaterInit( void );
 void R_BloomScreen( void );
-void R_WaterScreen( void );
-void R_AnimeScreen( void );
-void R_NTSCScreen( void );
-void R_PaletteScreen( void );
 // Postprocessing
 void R_PostprocessScreen( void );
 void R_PostprocessingInit(void);
@@ -2360,13 +2301,9 @@ void R_PostprocessingInit(void);
 // leilei
 void R_BrightScreen( void );
 void R_AltBrightnessInit( void );
-void R_FilmScreen( void );	//	leilei - film effect
 extern int softwaremode;
 extern int leifxmode;
 extern int voodootype; // 0 - none 1 - Voodoo Graphics 2 - Voodoo2, 3 - Voodoo Banshee/3, 4 - Voodoo4/5
-
-void RB_UpdateMotionBlur (void);
-void R_MotionBlur_BackupScreen(int which);
 
 void R_AddParticles (void);
 void R_RenderParticles (void);

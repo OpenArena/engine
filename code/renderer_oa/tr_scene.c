@@ -245,7 +245,21 @@ void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float r, floa
 	if ( glConfig.hardwareType == GLHW_RIVA128 || glConfig.hardwareType == GLHW_PERMEDIA2 ) {
 		return;
 	}
+
 	dl = &backEndData->dlights[r_numdlights++];
+
+	// leilei - r_monolightmaps also desaturate vertex dynamic lights
+	float ml = r_monolightmaps->value; // sanitize
+	if (ml>1) ml=1; if (ml<0) ml=0;
+
+	if( ml )
+	{
+		float saturated = (r * 0.22126) + (g * 0.7152) + (b * 0.0722);
+		r = saturated + (r - saturated) * ( 1-ml );
+		g = saturated + (g - saturated) * ( 1-ml );
+		b = saturated + (b - saturated) * ( 1-ml );
+	}		
+
 	VectorCopy (org, dl->origin);
 	dl->radius = intensity;
 	dl->color[0] = r;
@@ -361,7 +375,7 @@ void RE_RenderScene( const refdef_t *fd ) {
 	// turn off dynamic lighting globally by clearing all the
 	// dlights if it needs to be disabled or if vertex lighting is enabled
 	if ( r_dynamiclight->integer == 0 ||
-		 r_vertexLight->integer == 1 ||
+		 // r_vertexLight->integer == 1 || // leilei - commented this out, as we can now do dynamic lights with vertex light
 		 glConfig.hardwareType == GLHW_PERMEDIA2 ) {
 		tr.refdef.num_dlights = 0;
 	}
