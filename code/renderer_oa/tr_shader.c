@@ -5521,6 +5521,15 @@ static void CreateInternalShaders( void ) {
 	Q_strncpyz( shader.name, "<stencil shadow>", sizeof( shader.name ) );
 	shader.sort = SS_STENCIL_SHADOW;
 	tr.shadowShader = FinishShader();
+
+	// leilei - cone shader for flashblend
+	Q_strncpyz( shader.name, "<cone add>", sizeof( shader.name ) );
+	stages[0].bundle[0].image[0] = tr.whiteImage;
+	stages[0].active = qtrue;
+	stages[0].rgbGen = CGEN_VERTEX;
+	stages[0].alphaGen = AGEN_VERTEX;
+ 	stages[0].stateBits = GLS_SRCBLEND_ONE | GLS_DSTBLEND_ONE;
+	tr.coneShader = FinishShader();
 }
 
 static void CreateExternalShaders( void ) {

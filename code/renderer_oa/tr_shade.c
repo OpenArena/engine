@@ -644,6 +644,12 @@ static void ProjectDlightTexture_scalar( void ) {
 		colors = colorArray[0];
 
 		dl = &backEnd.refdef.dlights[l];
+
+		if ( dl->additive == 2) // leilei - glquake flashblend mode
+		{
+			return;
+		}
+
 		VectorCopy( dl->transformed, origin );
 		radius = dl->radius;
 		scale = 1.0f / radius;

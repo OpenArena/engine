@@ -161,6 +161,12 @@ qboolean Sys_WritePIDFile( void )
 	FILE      *f;
 	qboolean  stale = qfalse;
 
+#ifdef WINFOUR
+	// leilei - workaround to avoid crashes on WinNT4/W9X
+	if ( pidFiles )
+		return qfalse;
+#endif
+
 	if( pidFile == NULL )
 		return qfalse;
 

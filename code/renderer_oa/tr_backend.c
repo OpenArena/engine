@@ -849,6 +849,95 @@ void RB_BeginDrawingView (void) {
 
 #define	MAC_EVENT_PUMP_MSEC		5
 
+
+/*
+===================
+R_RenderFlashblend
+
+leilei - GLQuake RenderDlights
+Renders the classic GLQuake flashblend cone to subsitute dynamic lights. May be
+a little redundant with r_flaresDlight
+===================
+*/
+static void R_RenderFlashblend (dlight_t *light)
+{
+	int		i, j;
+	float	a;
+	vec3_t	v, vv;
+	float	rad;
+	vec3_t vup, vpn, vright;
+	vec3_t point;
+	float ofs = 1;
+
+	if ( (backEnd.refdef.rdflags & RDF_NOWORLDMODEL)) 	return;		// leilei - don't draw flashblends in the UI
+
+	VectorCopy( backEnd.refdef.viewaxis[0], vpn );
+	VectorCopy( backEnd.refdef.viewaxis[1], vright );
+	VectorCopy( backEnd.refdef.viewaxis[2], vup );
+
+
+	rad = light->radius * 0.35f;
+
+	for (int qj=0 ; qj<3 ; qj++)
+		v[qj] = light->origin[qj];
+
+	VectorSubtract (light->origin, backEnd.or.viewOrigin, vv);
+
+	RB_BeginSurface( tr.coneShader, tess.fogNum );
+
+	for (i=0 ; i<3 ; i++)
+		tess.xyz[tess.numVertexes][i] = light->origin[i] - (vpn[i]*(rad*(ofs*.75)));
+	tess.vertexColors[tess.numVertexes][0] = light->color[0] * 64;
+	tess.vertexColors[tess.numVertexes][1] = light->color[1] * 64;
+	tess.vertexColors[tess.numVertexes][2] = light->color[2] * 64;
+
+	// glquake's colors kick in if monolightmaps
+	if (r_monolightmaps->integer){
+	tess.vertexColors[tess.numVertexes][0] = 0.3 * 255;
+	tess.vertexColors[tess.numVertexes][1] = 0.2 * 255;
+	tess.vertexColors[tess.numVertexes][2] = 0.0 * 255;
+	}
+	tess.vertexColors[tess.numVertexes][3] = 255;
+	tess.numVertexes++;
+
+	for (int qi=0 ; qi<(17) ; qi++)
+	{
+		a = qi/(float)(16) * M_PI*2;
+		for (int qj=0 ; qj<3 ; qj++)
+		point[qj] = v[qj] + vright[qj]*cos(a)*rad + vup[qj]*sin(a)*rad;
+		VectorCopy (point, tess.xyz[tess.numVertexes] );
+		tess.vertexColors[tess.numVertexes][0] = 0;
+		tess.vertexColors[tess.numVertexes][1] = 0;
+		tess.vertexColors[tess.numVertexes][2] = 0;
+		tess.vertexColors[tess.numVertexes][3] = 0;
+		tess.indexes[tess.numIndexes++] = 0;
+		tess.indexes[tess.numIndexes++] = qi;
+		tess.indexes[tess.numIndexes++] = qi+1;
+		tess.numVertexes++;
+	}
+	RB_EndSurface();
+
+}
+
+
+// leilei - go through the active dlights, and then draw them
+static void RB_RenderFlashblends() {
+	int l;
+	int i;
+	if ( !backEnd.refdef.num_dlights ) {
+		return;
+	}
+	l = backEnd.refdef.dlights;
+	
+	for (i=0 ; i<backEnd.refdef.num_dlights ; i++, l++) {
+		dlight_t	*dl = &backEnd.refdef.dlights[i];
+		
+		if (dl->additive == 2)
+			R_RenderFlashblend(dl); // this is definitely flashblend.
+	}
+
+};
+
 /*
 ==================
 RB_RenderDrawSurfList
@@ -1038,6 +1127,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	// add the particles
 	//R_AddParticles ();
 	R_RenderParticles ();
+	RB_RenderFlashblends();		
 
 	// add light flares on lights that aren't obscured
 	RB_RenderFlares();

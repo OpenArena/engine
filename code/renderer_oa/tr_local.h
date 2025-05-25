@@ -1153,6 +1153,8 @@ typedef struct {
 	shader_t				*flareShaderAtlas;	// leilei - lens reflections
 	shader_t				*sunShader;
 
+	shader_t				*coneShader;		// leilei - flashblends
+
 	qhandle_t				skipProgram;
 	qhandle_t				defaultProgram;
 	qhandle_t				vertexLitProgram;

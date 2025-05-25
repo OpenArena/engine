@@ -241,10 +241,6 @@ void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float r, floa
 	if ( intensity <= 0 ) {
 		return;
 	}
-	// these cards don't have the correct blend mode
-	if ( glConfig.hardwareType == GLHW_RIVA128 || glConfig.hardwareType == GLHW_PERMEDIA2 ) {
-		return;
-	}
 
 	dl = &backEndData->dlights[r_numdlights++];
 
@@ -266,6 +262,26 @@ void RE_AddDynamicLightToScene( const vec3_t org, float intensity, float r, floa
 	dl->color[1] = g;
 	dl->color[2] = b;
 	dl->additive = additive;
+
+	// leilei - q3r/alice mode
+	if ( r_dynamiclight->integer == 2){
+
+		dl->color[0] = r * 0.1;
+		dl->color[1] = g * 0.1;
+		dl->color[2] = b * 0.1;
+		dl->additive = 1;
+	}
+
+	// these cards don't have the correct blend mode
+	// leilei - so force additive and keep going
+	if ( glConfig.hardwareType == GLHW_RIVA128 || glConfig.hardwareType == GLHW_PERMEDIA2 ) {
+		dl->additive = 1;
+	}
+
+	// leilei - glquake mode - 2 shuts off the light projection to make room for flashblend
+	if ( r_dynamiclight->integer == 3)
+		dl->additive = 2;
+
 }
 
 /*
@@ -374,9 +390,10 @@ void RE_RenderScene( const refdef_t *fd ) {
 
 	// turn off dynamic lighting globally by clearing all the
 	// dlights if it needs to be disabled or if vertex lighting is enabled
-	if ( r_dynamiclight->integer == 0 ||
+	if ( r_dynamiclight->integer == 0 // ||
 		 // r_vertexLight->integer == 1 || // leilei - commented this out, as we can now do dynamic lights with vertex light
-		 glConfig.hardwareType == GLHW_PERMEDIA2 ) {
+		 // glConfig.hardwareType == GLHW_PERMEDIA2 // leilei - commented this out, as permedia should play with flashblend/verts
+		) {
 		tr.refdef.num_dlights = 0;
 	}
 

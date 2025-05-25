@@ -170,7 +170,10 @@ Sys_RandomBytes
 qboolean Sys_RandomBytes( byte *string, int len )
 {
 	HCRYPTPROV  prov;
-
+	// leilei - NT 3.51 doesn't have this in ADVAPI32, so leave this out of WINFOUR
+#ifdef WINFOUR
+	return qfalse;
+#else
 	if( !CryptAcquireContext( &prov, NULL, NULL,
 		PROV_RSA_FULL, CRYPT_VERIFYCONTEXT ) )  {
 
@@ -183,6 +186,7 @@ qboolean Sys_RandomBytes( byte *string, int len )
 	}
 	CryptReleaseContext( prov, 0 );
 	return qtrue;
+#endif
 }
 
 /*

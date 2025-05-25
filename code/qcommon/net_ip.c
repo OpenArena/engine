@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #	include <winsock2.h>
 #	include <ws2tcpip.h>
 #	if WINVER < 0x501
+
 #		ifdef __MINGW32__
 			// wspiapi.h isn't available on MinGW, so if it's
 			// present it's because the end user has added it
@@ -37,6 +38,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #		endif
 #	else
 #		include <ws2spi.h>
+#	endif
+
+			// leilei - addition to fix win9x
+#	ifdef USE_REACTOS_WINSOCK_HEADER
+#		include "../reactos/wspiapi.h"
 #	endif
 
 typedef int socklen_t;

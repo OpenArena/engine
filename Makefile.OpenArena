@@ -10,11 +10,13 @@ BUILD_CLIENT=1
 BUILD_SERVER=1
 BUILD_GAME_SO=0
 BUILD_GAME_QVM=0
+USE_GIT=0
 BUILD_BASEGAME=0
 BUILD_MISSIONPACK=0
 BASEGAME=baseoa
 # VERSION=1.36+0.8.8
-VERSION=3.0.0a
+VERSION=TEST
+
 
 # OpenArena doesn't use opus yet
 USE_CODEC_VORBIS=1
@@ -24,13 +26,17 @@ ifndef USE_CODEC_XMP
 USE_CODEC_XMP=1
 endif
 
+USE_CURL=1
+
 # FLTO Test
 
 OPTIMIZE += -flto
 
-# This doesn't work with OpenArena yet
+# Not supported
 BUILD_RENDERER_OPENGL2=0
 # You can disable the renderer libraries and build in the OA renderer by default
+# This is disabled because we have some client builtins used (trace etc) and 
+# we are scaling back some modularization for security and support reasons.
 USE_RENDERER_DLOPEN=0
 
 # Choose version 1 or 2
@@ -58,6 +64,12 @@ CLIENTBIN=openarena
 SERVERBIN=oa_ded
 COPYDIR=/usr/local/games/openarena
 
+# Use the Winsock2 headers from ReactOS, which doesn't give errors in Win9x
+# USE_REACTOS_WINSOCK_HEADER=1
+
+# Enable changes to allow Windows 95 and NT4 to work 
+# (Overrides enabling libraries above that don't work well, and outputs to oa95.exe)
+WINFOUR=0
 
 # DEBUG_CFLAGS=-ggdb -O0
 

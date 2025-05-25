@@ -228,6 +228,14 @@ ifndef USE_LOCAL_HEADERS
 USE_LOCAL_HEADERS=1
 endif
 
+ifndef WINFOUR
+WINFOUR=0
+endif
+
+ifndef USE_REACTOS_WINSOCK_HEADER
+USE_REACTOS_WINSOCK_HEADER=0
+endif
+
 ifndef USE_RENDERER_DLOPEN
 USE_RENDERER_DLOPEN=1
 endif
@@ -242,6 +250,15 @@ endif
 
 ifndef SDL_VERSION
 SDL_VERSION=2
+endif
+
+ifeq ($(WINFOUR),1)
+  BASE_CFLAGS += -DWINFOUR
+  BASE_CFLAGS += -DUSE_REACTOS_WINSOCK_HEADER
+  BASE_CFLAGS += -DUSE_INTERNAL_JPEG
+  SDL_VERSION=1
+  USE_CURL=0
+  CLIENTBIN=oa95
 endif
 
 #############################################################################
@@ -1139,6 +1156,10 @@ endif
 
 ifeq ($(USE_LOCAL_HEADERS),1)
   BASE_CFLAGS += -DUSE_LOCAL_HEADERS
+endif
+
+ifeq ($(USE_REACTOS_WINSOCK_HEADER),1)
+  BASE_CFLAGS += -DUSE_REACTOS_WINSOCK_HEADER
 endif
 
 ifeq ($(BUILD_STANDALONE),1)
@@ -3020,8 +3041,8 @@ else
 	@$(MAKE) VERSION=$(VERSION) -C $(LOKISETUPDIR) V=$(V)
 endif
 
-dist:
-	git archive --format zip --output $(CLIENTBIN)-$(VERSION).zip HEAD
+# dist:
+#	git archive --format zip --output $(CLIENTBIN)-$(VERSION).zip HEAD
 
 #############################################################################
 # DEPENDENCIES
