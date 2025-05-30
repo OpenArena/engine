@@ -861,9 +861,9 @@ a little redundant with r_flaresDlight
 */
 static void R_RenderFlashblend (dlight_t *light)
 {
-	int		i, j;
+	int	i;
 	float	a;
-	vec3_t	v, vv;
+	vec3_t	v;
 	float	rad;
 	vec3_t vup, vpn, vright;
 	vec3_t point;
@@ -880,8 +880,6 @@ static void R_RenderFlashblend (dlight_t *light)
 
 	for (int qj=0 ; qj<3 ; qj++)
 		v[qj] = light->origin[qj];
-
-	VectorSubtract (light->origin, backEnd.or.viewOrigin, vv);
 
 	RB_BeginSurface( tr.coneShader, tess.fogNum );
 
@@ -921,15 +919,13 @@ static void R_RenderFlashblend (dlight_t *light)
 
 
 // leilei - go through the active dlights, and then draw them
-static void RB_RenderFlashblends() {
-	int l;
+static void RB_RenderFlashblends(void) {
 	int i;
 	if ( !backEnd.refdef.num_dlights ) {
 		return;
 	}
-	l = backEnd.refdef.dlights;
 	
-	for (i=0 ; i<backEnd.refdef.num_dlights ; i++, l++) {
+	for (i=0 ; i<backEnd.refdef.num_dlights ; i++) {
 		dlight_t	*dl = &backEnd.refdef.dlights[i];
 		
 		if (dl->additive == 2)
@@ -945,13 +941,13 @@ RB_RenderDrawSurfList
 */
 void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	shader_t		*shader, *oldShader;
-	int				fogNum, oldFogNum;
-	int				entityNum, oldEntityNum;
-	int				dlighted, oldDlighted;
+	int			fogNum, oldFogNum;
+	int			entityNum, oldEntityNum;
+	int			dlighted, oldDlighted;
 	qboolean		depthRange, oldDepthRange, isCrosshair, wasCrosshair;
-	int				i;
+	int			i;
 	drawSurf_t		*drawSurf;
-	int				oldSort;
+	int			oldSort;
 	float			originalTime;
 
 	// save original time for entity shader offsets

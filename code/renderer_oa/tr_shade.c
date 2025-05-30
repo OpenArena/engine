@@ -1031,7 +1031,7 @@ static void ComputeColors( shaderStage_t *pStage )
 			// TODO
 			break;
 		case CMOD_BAD:
-			return;
+			break;
 	}
 
 	//
