@@ -3604,6 +3604,38 @@ static qboolean ParseShader( char **text )
 			SkipRestOfLine( text );
 			continue;
 		}
+
+		// leilei - Parse a shader for the sun, and a type of flare for the number after it.
+		// Inspired by ET's sunShader (my own implementation)
+		else if ( !Q_stricmp( token, "sunShader" ) ) {
+			// load a sun shader to override our default shader
+			token = COM_ParseExt( text, qfalse );
+
+			tr.sunShaderCustom = CopyString(token); // leilei - copy the shader's name so we can load it properly elsewhere (doing it here would make a broken sun)
+			tr.sunOn = 1;	// activate sun to be rendered for r_drawSun 1.		
+
+			// the next one is the flare type.
+			token = COM_ParseExt( text, qfalse );
+			if ( !token[0] ) 
+			{
+				tr.sunFlare = 0;	// dont flare if we dont specify
+				continue;
+			}
+			tr.sunFlare = atoi( token );
+
+			// the next one is a size multiplier.
+			token = COM_ParseExt( text, qfalse );
+			if ( !token[0] ) 
+			{
+				tr.sunOn = 1;		// sun is always normal size if we don't specify
+				continue;
+			}
+			if (atof( token )>1)
+			tr.sunOn = atof( token );
+
+			continue;
+			}
+
 		// sun parms
 		else if ( !Q_stricmp( token, "q3map_sun" ) ) {
 			float	a, b;
@@ -5346,17 +5378,40 @@ a single large text block that can be scanned for shader names
 =====================
 */
 #define	MAX_SHADER_FILES	4096
+
+static int Shader_AddFileToList( char *name, char *list[0x1000], int nfiles ) {
+	int		i;
+
+	if ( nfiles == 0x1000 - 1 ) {
+		return nfiles;
+	}
+	for ( i = 0 ; i < nfiles ; i++ ) {
+		if ( !Q_stricmp( name, list[i] ) ) {
+			return nfiles;		// allready in list
+		}
+	}
+	list[nfiles] = CopyString( name );
+	nfiles++;
+
+	return nfiles;
+}
+
+
 static void ScanAndLoadShaderFiles( void )
 {
 	char **shaderFiles;
+
 	char *buffers[MAX_SHADER_FILES];
 	char *p;
 	int numShaderFiles;
-	int i;
+	int i, j;
 	char *oldp, *token, *hashMem, *textEnd;
 	int shaderTextHashTableSizes[MAX_SHADERTEXT_HASH], hash, size;
 	char shaderName[MAX_QPATH];
 	int shaderLine;
+
+	char **lowShaderFiles;
+	int  numLowShaderFiles;
 
 	long sum = 0, summand;
 	// scan for shader files
@@ -5366,10 +5421,6 @@ static void ScanAndLoadShaderFiles( void )
 	{
 		ri.Printf( PRINT_WARNING, "WARNING: no shader files found\n" );
 		return;
-	}
-
-	if ( numShaderFiles > MAX_SHADER_FILES ) {
-		numShaderFiles = MAX_SHADER_FILES;
 	}
 
 	// load and parse shader files
@@ -5383,7 +5434,7 @@ static void ScanAndLoadShaderFiles( void )
 		
 		if ( !buffers[i] )
 			ri.Error( ERR_DROP, "Couldn't load %s", filename );
-		
+
 		// Do a simple check on the shader structure in that file to make sure one bad shader file cannot fuck up all other shaders.
 		p = buffers[i];
 		COM_BeginParseSession(filename);
@@ -5427,8 +5478,35 @@ static void ScanAndLoadShaderFiles( void )
 			sum += summand;		
 	}
 
+	// leilei - low end video
+	if (r_lowEndVideo->integer)
+	{
+
+
+		lowShaderFiles = ri.FS_ListFiles( "scripts", ".low", &numLowShaderFiles );
+	//	shaderFiles += lowShaderFiles;
+	//	numShaderFiles += numLowShaderFiles;
+	
+		// leilei - append in low shader files
+		if (numLowShaderFiles)
+		for ( i = 0; i < numLowShaderFiles; i++ )
+		{
+			ri.Printf( PRINT_WARNING, "USING LOW END SHADER: %s\n", lowShaderFiles[i]);
+		//	Shader_AddFileToList (lowShaderFiles[i], shaderFiles, numShaderFiles);
+		//	shaderFiles[numShaderFiles+1] = lowShaderFiles[i];CopyString( lowShaderFiles[i] );
+		//	numShaderFiles++;
+	//		shaderFiles[numShaderFiles+1] = lowShaderFiles[i];
+	
+		}
+	}
+
+
+	if ( numShaderFiles > MAX_SHADER_FILES ) {
+		numShaderFiles = MAX_SHADER_FILES;
+	}
+
 	// build single large buffer
-	s_shaderText = ri.Hunk_Alloc( sum + numShaderFiles*2, h_low );
+	s_shaderText = ri.Hunk_Alloc( sum + (numShaderFiles*2) + (numLowShaderFiles*2), h_low );
 	s_shaderText[ 0 ] = '\0';
 	textEnd = s_shaderText;
  
@@ -5575,9 +5653,6 @@ static void CreateExternalShaders( void ) {
 			tr.flareShaderAtlas->stages[index]->stateBits |= GLS_DEPTHTEST_DISABLE;
 		}
 	}
-
-
-	tr.sunShader = R_FindShader( "sun", LIGHTMAP_NONE, qtrue );
 
 //	leilei - placeholder shaders
 	tr.placeholderTextureShader = R_FindShader( "placeholder_texture", LIGHTMAP_NONE, qtrue );

@@ -1152,6 +1152,7 @@ typedef struct {
 	shader_t				*flareShader;
 	shader_t				*flareShaderAtlas;	// leilei - lens reflections
 	shader_t				*sunShader;
+	char					*sunShaderCustom; 	// leilei - sunShader override
 
 	shader_t				*coneShader;		// leilei - flashblends
 
@@ -1193,6 +1194,8 @@ typedef struct {
 
 	vec3_t					sunLight;			// from the sky shader for this level
 	vec3_t					sunDirection;
+	int					sunFlare;			// leilei - sun flare type
+	float					sunOn;				// leilei - allow the sun to be drawn, if a sunShader is specified by a sky shader.  This is a float so we can multiply the size of the sun in the shader
 
 	frontEndCounters_t		pc;
 	int						frontEndMsec;		// not in pc due to clearing issue
@@ -1255,7 +1258,7 @@ extern glstate_t	glState;		// outside of TR since it shouldn't be cleared during
 extern qboolean  vertexShaders;
 extern qboolean  postprocess;
 extern int	 leifxmode;	// leilei - leifx
-extern char		 depthimage;
+extern char	 depthimage;
 
 //
 // cvars
@@ -1396,6 +1399,8 @@ extern cvar_t	*r_particles;	// Leilei - particles!
 extern	cvar_t	*r_iconmip;	// leilei - icon mip - picmip for 2d icons
 extern	cvar_t	*r_iconBits;	// leilei - icon color depth for 2d icons
 
+extern cvar_t	*r_lerpbias;	// Leilei - lerping bias
+
 extern	cvar_t	*r_lightmapBits;	// leilei - lightmap color depth
 extern	cvar_t	*r_lightmapColorNorm;	// leilei - lightmap color normalize
 
@@ -1405,6 +1410,8 @@ extern  cvar_t	*r_detailTextureLayers;		// leilei - add in more smaller detail t
 extern  cvar_t	*r_textureDither;		// leilei - apply dithering for lower texture bits
 
 extern cvar_t	*r_skytess;		// leilei - adjusts the subdivisions of the sky (max 8, min 1)
+
+extern  cvar_t	*r_lowEndVideo;		// leilei - load .low shaders
 
 //====================================================================
 
@@ -1567,12 +1574,12 @@ typedef struct shaderCommands_s
 
 	shader_t	*shader;
 	float		shaderTime;
-	int			fogNum;
+	int		fogNum;
 
-	int			dlightBits;	// or together of all vertexDlightBits
+	int		dlightBits;	// or together of all vertexDlightBits
 
-	int			numIndexes;
-	int			numVertexes;
+	int		numIndexes;
+	int		numVertexes;
 
 	// info extracted from current shader
 	int			numPasses;

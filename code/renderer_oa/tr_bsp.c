@@ -1878,6 +1878,9 @@ void RE_LoadWorldMap( const char *name ) {
 	tr.sunDirection[0] = 0.45f;
 	tr.sunDirection[1] = 0.3f;
 	tr.sunDirection[2] = 0.9f;
+	
+	// leilei - deactivate sun and flare if it ain't there
+	tr.sunOn = 0; tr.sunFlare = 0; tr.sunShaderCustom = 0;
 
 	VectorNormalize( tr.sunDirection );
 
@@ -1929,6 +1932,12 @@ void RE_LoadWorldMap( const char *name ) {
 	R_LoadEntities( &header->lumps[LUMP_ENTITIES] );
 	R_LoadLightGrid( &header->lumps[LUMP_LIGHTGRID] );
 
+	// leilei - load our specific custom sun here
+	if (tr.sunShaderCustom)
+	tr.sunShader = R_FindShader( tr.sunShaderCustom, LIGHTMAP_NONE, qtrue );
+	else
+	tr.sunShader = R_FindShader( "sun", LIGHTMAP_NONE, qtrue );
+	
 	s_worldData.dataSize = (byte *)ri.Hunk_Alloc(0, h_low) - startMarker;
 
 	// only set tr.world now that we know the entire level has loaded properly

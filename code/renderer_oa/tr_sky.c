@@ -716,7 +716,6 @@ void RB_DrawSun( void ) {
 	float		size;
 	float		dist;
 	vec3_t		origin, vec1, vec2;
-	vec3_t		temp;
 
 	if ( !backEnd.skyRenderedThisView ) {
 		return;
@@ -726,7 +725,20 @@ void RB_DrawSun( void ) {
 		return;
 	}
 
+	// leilei - do the actual sun check, for our default behavior
+	if ( r_drawSun->integer == 1 && !tr.sunOn ) {
+		return;
+	}
+
+	if ( (backEnd.refdef.rdflags & RDF_NOWORLDMODEL)) 	return;		// leilei - don't bother with sun if we don't world. Possible crash prevention to an uninitialized sun
+
+	if ( !tr.sunShader )	// leilei - if we somehow, did not load a sun shader at all for some reason, don't try
+		return;
+
 	if ( backEnd.doneSun)	// leilei - only do sun once
+		return;
+
+	if (backEnd.viewParms.isPortal) // leilei - do sun only not in the portal (keeps sun from disappearing when portal is onscreen)
 		return;
 
 	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix );
@@ -735,6 +747,11 @@ void RB_DrawSun( void ) {
 	dist = 	backEnd.viewParms.zFar / 1.75;		// div sqrt(3)
 	size = dist * 0.4;
 
+	// leilei - allow the size of the sun to be changed
+	if (tr.sunOn)
+	size *= tr.sunOn;
+
+	size *= -1; // inverse to fix flip
 
 	// leilei - SUN color
 	vec3_t	coll;
@@ -766,62 +783,16 @@ void RB_DrawSun( void ) {
 	// farthest depth range
 	qglDepthRange( 1.0, 1.0 );
 
-
-
-
-	// FIXME: use quad stamp
 	RB_BeginSurface( tr.sunShader, tess.fogNum );
-		VectorCopy( origin, temp );
-		VectorSubtract( temp, vec1, temp );
-		VectorSubtract( temp, vec2, temp );
-		VectorCopy( temp, tess.xyz[tess.numVertexes] );
-		tess.texCoords[tess.numVertexes][0][0] = 0;
-		tess.texCoords[tess.numVertexes][0][1] = 0;
-		tess.vertexColors[tess.numVertexes][0] = 255;
-		tess.vertexColors[tess.numVertexes][1] = 255;
-		tess.vertexColors[tess.numVertexes][2] = 255;
-		tess.numVertexes++;
 
-		VectorCopy( origin, temp );
-		VectorAdd( temp, vec1, temp );
-		VectorSubtract( temp, vec2, temp );
-		VectorCopy( temp, tess.xyz[tess.numVertexes] );
-		tess.texCoords[tess.numVertexes][0][0] = 0;
-		tess.texCoords[tess.numVertexes][0][1] = 1;
-		tess.vertexColors[tess.numVertexes][0] = 255;
-		tess.vertexColors[tess.numVertexes][1] = 255;
-		tess.vertexColors[tess.numVertexes][2] = 255;
-		tess.numVertexes++;
+	// leilei - for quadstamp
+	byte colb[4];
+	colb[0] = coll[0] * 255;
+	colb[1] = coll[1] * 255;
+	colb[2] = coll[2] * 255;
+	colb[3] = 255;
 
-		VectorCopy( origin, temp );
-		VectorAdd( temp, vec1, temp );
-		VectorAdd( temp, vec2, temp );
-		VectorCopy( temp, tess.xyz[tess.numVertexes] );
-		tess.texCoords[tess.numVertexes][0][0] = 1;
-		tess.texCoords[tess.numVertexes][0][1] = 1;
-		tess.vertexColors[tess.numVertexes][0] = 255;
-		tess.vertexColors[tess.numVertexes][1] = 255;
-		tess.vertexColors[tess.numVertexes][2] = 255;
-		tess.numVertexes++;
-
-		VectorCopy( origin, temp );
-		VectorSubtract( temp, vec1, temp );
-		VectorAdd( temp, vec2, temp );
-		VectorCopy( temp, tess.xyz[tess.numVertexes] );
-		tess.texCoords[tess.numVertexes][0][0] = 1;
-		tess.texCoords[tess.numVertexes][0][1] = 0;
-		tess.vertexColors[tess.numVertexes][0] = 255;
-		tess.vertexColors[tess.numVertexes][1] = 255;
-		tess.vertexColors[tess.numVertexes][2] = 255;
-		tess.numVertexes++;
-
-		tess.indexes[tess.numIndexes++] = 0;
-		tess.indexes[tess.numIndexes++] = 1;
-		tess.indexes[tess.numIndexes++] = 2;
-		tess.indexes[tess.numIndexes++] = 0;
-		tess.indexes[tess.numIndexes++] = 2;
-		tess.indexes[tess.numIndexes++] = 3;
-
+	RB_AddQuadStamp( origin, vec1, vec2, colb );
 	RB_EndSurface();
 
 	// back to normal depth range

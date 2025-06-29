@@ -1818,6 +1818,7 @@ void RB_CalcDiffuseColor( unsigned char *colors )
 	{
 		RB_CalcMaterials( colors, 0xFFFFFF, 0x808080, 0x808080, 0x000000, 128, 255 );
 	}
+#if BROKEN // leilei: FIXME this does not work as intended 
 	else if ((r_shadeMethod->integer > 150) && (r_shadeMethod->integer < 667)) 			// values in a certain range is an adaptive LOD selection of -1, 0 and 3
 	{
 		float projectedRadius, fsh, shadescale, radius;
@@ -1838,6 +1839,7 @@ void RB_CalcDiffuseColor( unsigned char *colors )
 				RB_CalcDiffuseColor_flat( colors );
 
 	}
+#endif	// BROKEN
 	else							// standard idtech3 shading
 	{
 		RB_CalcDiffuseColor_scalar( colors );

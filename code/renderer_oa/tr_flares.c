@@ -1330,10 +1330,30 @@ void RB_DrawSunFlare( void )
 		return;
 	}
 
+	// leilei - don't draw the flare if we ain't got the sun
+	if ( !r_drawSun->integer ) {
+		return;
+	}
+
+	// don't draw the flare if we don't define the sun
+	if ( r_drawSun->integer == 1 && (!tr.sunOn) ) {
+		return;
+	}
+
 	if ( backEnd.doneSunFlare)	// leilei - only do sun once
 		return;
 
+	if (backEnd.viewParms.isPortal) // leilei - do sun only not in the portal (keeps sun from disappearing when portal is onscreen)
+		return;
+
 	fetype = r_flareSun->integer;
+
+	// if we specified a flare type for sunshader in the sky, then we use it.
+	if (tr.sunOn && (r_drawSun->integer == 1)) {
+		fetype = tr.sunFlare;
+	}
+	// but, if we don't want the sunflare (type is 0 - either on the r_drawSun 2 override or the shader) then we just forget it
+	if (fetype == 0) return;
 
 	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix );
 	qglTranslatef (backEnd.viewParms.or.origin[0], backEnd.viewParms.or.origin[1], backEnd.viewParms.or.origin[2]);
