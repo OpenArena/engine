@@ -809,6 +809,52 @@ static void RB_FogPass( void ) {
 	R_DrawElements( tess.numIndexes, tess.indexes );
 }
 
+
+/*
+===================
+RE_GetViewPosition
+
+leilei
+
+Returns a vector of the point that is from the renderer. Used to (try) getting accurate positions
+of things in the world for Cgame to work with, where cgame may (likely) fail.
+===================
+*/
+
+void RE_GetViewPosition(vec3_t point)
+{
+	vec4_t			eye, clip, normalized, window;
+	int i;
+	R_TransformModelToClip( point, backEnd.or.modelMatrix,
+	                        backEnd.viewParms.projectionMatrix, eye, clip );
+
+	// check to see if the point is completely off screen
+	for ( i = 0 ; i < 3 ; i++ ) {
+		if ( clip[i] >= clip[3] || clip[i] <= -clip[3] ) {
+		point[0] = -666;
+		point[1] = -666;
+			return;
+		}
+	}
+
+	R_TransformClipToWindow( clip, &backEnd.viewParms, normalized, window );
+
+	if ( window[0] < 0 || window[0] >= backEnd.viewParms.viewportWidth
+	        || window[1] < 0 || window[1] >= backEnd.viewParms.viewportHeight ) {
+		point[0] = -666;
+		point[1] = -666;
+		return;	// shouldn't happen, since we check the clip[] above, except for FP rounding
+	}
+
+	point[0] = (float)(backEnd.viewParms.viewportX + window[0]);
+	point[1] = (float)(backEnd.viewParms.viewportY + window[1]);
+
+	point[2] = 0;
+	//return there;
+}
+
+
+
 /*
 ===============
 ComputeColors

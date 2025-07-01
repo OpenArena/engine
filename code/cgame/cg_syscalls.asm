@@ -104,3 +104,4 @@ equ	testPrintInt				-110
 equ	testPrintFloat				-111
 equ acos						-112
 equ trap_R_LFX_ParticleEffect				-113
+equ trap_R_GetViewPosition				-114

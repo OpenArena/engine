@@ -853,6 +853,8 @@ static void LerpMeshVertexes(md3Surface_t *surf, float backlerp)
 #endif // idppc_altivec
 	LerpMeshVertexes_scalar( surf, backlerp );
 }
+extern float ProjectRadius( float r, vec3_t location );
+
 
 /*
 =============
@@ -873,6 +875,22 @@ static void RB_SurfaceMesh(md3Surface_t *surface) {
 	} else  {
 		backlerp = backEnd.currentEntity->e.backlerp;
 	}
+
+	if (r_lerpbias->integer)
+	{
+		float projectedRadius, fsh, lerpscale, radius;
+		trRefEntity_t	*ent = backEnd.currentEntity;
+		fsh = 1;
+		radius = 1;
+		lerpscale = r_lerpbias->value*-0.2;
+		if ( ( projectedRadius = ProjectRadius( radius, ent->e.origin ) ) != 0 )
+		{
+			fsh = 1.0f - projectedRadius * lerpscale;
+		}
+		if (fsh > 1)
+			backlerp = 0;
+	}
+
 
 	RB_CHECKOVERFLOW( surface->numVerts, surface->numTriangles*3 );
 
@@ -1299,7 +1317,9 @@ void (*rb_surfaceTable[SF_NUM_SURFACE_TYPES])( void *) = {
 	(void(*)(void*))RB_SurfacePolychain,		// SF_POLY,
 	(void(*)(void*))RB_SurfaceMesh,			// SF_MD3,
 	(void(*)(void*))RB_MDRSurfaceAnim,		// SF_MDR,
+#ifdef BROKEN_IQM
 	(void(*)(void*))RB_IQMSurfaceAnim,		// SF_IQM,
+#endif
 	(void(*)(void*))RB_SurfaceFlare,		// SF_FLARE,
 	(void(*)(void*))RB_SurfaceEntity,		// SF_ENTITY
 	(void(*)(void*))RB_SurfaceDisplayList		// SF_DISPLAY_LIST

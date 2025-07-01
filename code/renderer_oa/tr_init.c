@@ -212,6 +212,9 @@ cvar_t	*r_mockvr;		// Leilei - for debugging PVR only!
 cvar_t	*r_leifx;		// Leilei - leifx nostalgia filter
 cvar_t	*r_shadeMethod;		// Leilei
 cvar_t	*r_particles;		// Leilei - particle effects motif
+#ifdef BROKEN_MDRPHYS
+cvar_t	*r_mdrPhysics;		// Leilei - mdr physics
+#endif
 
 cvar_t	*r_skytess;	// leilei - lower detail of skies
 
@@ -224,7 +227,6 @@ cvar_t	*r_textureDither;	// leilei - Dithered texture
 
 cvar_t	*r_lerpbias;		// Leilei - lerping bias
 
-cvar_t	*r_lowEndVideo;		// leilei - load .low shaders
 // leilei - fallback shader hack
 
 
@@ -1308,6 +1310,9 @@ void R_Register( void )
 
 	r_leidebug = ri.Cvar_Get( "r_leidebug", "0" , CVAR_CHEAT);
 	r_particles = ri.Cvar_Get( "r_particles", "0" , CVAR_ARCHIVE | CVAR_LATCH);
+#ifdef BROKEN_MDRPHYS
+	r_mdrPhysics = ri.Cvar_Get( "r_mdrPhysics", "0" , CVAR_ARCHIVE);
+#endif
 	r_leidebugeye = ri.Cvar_Get( "r_leidebugeye", "0" , CVAR_CHEAT);
 
 	r_lerpbias = ri.Cvar_Get( "r_lerpbias", "-2" , CVAR_ARCHIVE);
@@ -1317,8 +1322,6 @@ void R_Register( void )
 
 	r_lightmapBits = ri.Cvar_Get ("r_lightmapBits", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - lightmap color bits
 	r_lightmapColorNorm = ri.Cvar_Get ("r_lightmapColorNorm", "1", CVAR_ARCHIVE | CVAR_LATCH ); // leilei - lightmap color normalization
-
-	r_lowEndVideo = ri.Cvar_Get( "r_lowEndVideo", "0", CVAR_ARCHIVE | CVAR_LATCH );
 
 	r_textureDither = ri.Cvar_Get ("r_textureDither", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - dithered textures
 
@@ -1732,6 +1735,7 @@ refexport_t *GetRefAPI ( int apiVersion, refimport_t *rimp )
 	re.AddRefEntityToScene = RE_AddRefEntityToScene;
 	re.AddPolyToScene = RE_AddPolyToScene;
 	re.LFX_ParticleEffect = LFX_ParticleEffect;
+	re.GetViewPosition = RE_GetViewPosition;
 	re.LightForPoint = R_LightForPoint;
 	re.AddLightToScene = RE_AddLightToScene;
 	re.AddAdditiveLightToScene = RE_AddAdditiveLightToScene;

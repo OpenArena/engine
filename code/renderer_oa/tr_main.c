@@ -1249,9 +1249,11 @@ void R_AddEntitySurfaces (void) {
 				case MOD_MDR:
 					R_MDRAddAnimSurfaces( ent );
 					break;
+#ifdef BROKEN_IQM
 				case MOD_IQM:
 					R_AddIQMSurfaces( ent );
 					break;
+#endif
 				case MOD_BRUSH:
 					R_AddBrushModelSurfaces( ent );
 					break;

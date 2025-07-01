@@ -637,7 +637,9 @@ intptr_t CL_CgameSystemCalls( intptr_t *args ) {
 	case CG_R_LFX_PARTICLEEFFECT:
 		re.LFX_ParticleEffect( args[1], VMA(2), VMA(3));
 		return 0;
-
+	case CG_R_VIEWPOSITION:
+		re.GetViewPosition( VMA(1) );
+		return VMA(1);
 	case CG_PC_ADD_GLOBAL_DEFINE:
 		return botlib_export->PC_AddGlobalDefine( VMA(1) );
 	case CG_PC_LOAD_SOURCE:

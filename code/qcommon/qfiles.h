@@ -300,6 +300,22 @@ typedef struct {
 	int			ofsEnd;				// end of file
 } mdrHeader_t;
 
+#ifdef BROKEN_MDRPHYS
+// leilei - bone deformery
+// 		MDR loading also checks for a text file that can set these properties so the "MDP" code can get to work with them.
+//		and working from the cliententity.
+typedef struct {
+
+		vec3_t ofs[MDR_MAX_BONES];
+		vec3_t wgt[MDR_MAX_BONES];
+		float jiggle[MDR_MAX_BONES];
+	
+} mdrClBoneDeformSet_t;
+
+typedef struct {
+		mdrClBoneDeformSet_t def[4];	// up to 4 can alter bones
+} mdrDeformity_t;
+#endif
 
 /*
 ==============================================================================

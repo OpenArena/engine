@@ -20,7 +20,7 @@ along with Quake III Arena source code; if not, write to the Free Software
 Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 ===========================================================================
 */
-
+#ifdef BROKEN_IQM
 #include "tr_local.h"
 
 #define	LL(x) x=LittleLong(x)
@@ -1184,3 +1184,5 @@ int R_IQMLerpTag( orientation_t *tag, iqmData_t *data,
 
 	return qtrue;
 }
+
+#endif

@@ -34,6 +34,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 //#define	PRE_RELEASE_DEMO
 
+// leilei - broken things
+
+//#define	BROKEN_MDRPHYS	// MDR physics are not serialized!
+//#define BROKEN_IQM	// crashes (and we don't plan to use the format anyway. IQM users are other games)
+
 //============================================================================
 
 //

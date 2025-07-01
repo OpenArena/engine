@@ -70,6 +70,7 @@ typedef struct {
 	void	(*RenderScene)( const refdef_t *fd );
 
 	void	(*LFX_ParticleEffect)( int effect, const vec3_t origin, const vec3_t velocity ); // leilei - particles
+	void	(*GetViewPosition)( vec3_t point ); 
 
 	void	(*SetColor)( const float *rgba );	// NULL = 1,1,1,1
 	void	(*DrawStretchPic) ( float x, float y, float w, float h, 
