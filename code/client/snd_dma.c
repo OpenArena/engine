@@ -267,17 +267,17 @@ static sfx_t *S_FindName( const char *name ) {
 	}
 
 	if (!name[0]) {
-		Com_Printf( S_COLOR_YELLOW "WARNING: Sound name is empty\n" );
+		Com_DPrintf( S_COLOR_YELLOW "WARNING: Sound name is empty\n" );
 		return NULL;
 	}
 
 	if (strlen(name) >= MAX_QPATH) {
-		Com_Printf( S_COLOR_YELLOW "WARNING: Sound name is too long: %s\n", name );
+		Com_DPrintf( S_COLOR_YELLOW "WARNING: Sound name is too long: %s\n", name );
 		return NULL;
 	}
 
 	if (name[0] == '*') {
-		Com_Printf( S_COLOR_YELLOW "WARNING: Tried to load player sound directly: %s\n", name );
+		Com_DPrintf( S_COLOR_YELLOW "WARNING: Tried to load player sound directly: %s\n", name );
 		return NULL;
 	}
 
@@ -371,7 +371,7 @@ sfxHandle_t	S_Base_RegisterSound( const char *name, qboolean compressed ) {
 
 	if ( sfx->soundData ) {
 		if ( sfx->defaultSound ) {
-			Com_Printf( S_COLOR_YELLOW "WARNING: could not find %s - using default\n", sfx->soundName );
+			Com_DPrintf( S_COLOR_YELLOW "WARNING: could not find %s - using default\n", sfx->soundName );
 			return 0;
 		}
 		return sfx - s_knownSfx;
@@ -383,7 +383,7 @@ sfxHandle_t	S_Base_RegisterSound( const char *name, qboolean compressed ) {
   S_memoryLoad(sfx);
 
 	if ( sfx->defaultSound ) {
-		Com_Printf( S_COLOR_YELLOW "WARNING: could not find %s - using default\n", sfx->soundName );
+		Com_DPrintf( S_COLOR_YELLOW "WARNING: could not find %s - using default\n", sfx->soundName );
 		return 0;
 	}
 
@@ -1428,7 +1428,7 @@ static void S_OpenBackgroundStream( const char *filename ) {
 	// Open stream
 	s_backgroundStream = S_CodecOpenStream(filename);
 	if(!s_backgroundStream) {
-		Com_Printf( S_COLOR_YELLOW "WARNING: couldn't open music file %s\n", filename );
+		Com_DPrintf( S_COLOR_YELLOW "WARNING: couldn't open music file %s\n", filename );
 		return;
 	}
 

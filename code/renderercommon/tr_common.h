@@ -47,6 +47,26 @@ typedef enum
 	IMGFLAG_GENNORMALMAP   = 0x0100,
 } imgFlags_t;
 
+// DDS stuff
+
+
+typedef enum
+{
+    FT_DEFAULT,
+    FT_LINEAR,
+    FT_NEAREST
+} filterType_t;
+
+typedef enum
+{
+    WT_REPEAT,
+    WT_CLAMP,					// don't repeat the texture for texture coords outside [0, 1]
+    WT_EDGE_CLAMP,
+    WT_ZERO_CLAMP,				// guarantee 0,0,0,255 edge for projected textures
+    WT_ALPHA_ZERO_CLAMP			// guarante 0 alpha edge for projected textures
+} wrapType_t;
+
+
 typedef struct image_s {
 	char		imgName[MAX_QPATH];		// game path, including extension
 	int			width, height;				// source image
@@ -67,6 +87,11 @@ typedef struct image_s {
 
 	float				loadTime;	// leilei - time taken loading image
 	float				procTime;	// leilei - time taken processing image/uploading to vram
+
+	// DXT/DDS stuff
+	GLenum          ddsType;
+   	filterType_t	filterType; 	
+   	wrapType_t	wrapType;
 } image_t;
 
 // any change in the LIGHTMAP_* defines here MUST be reflected in

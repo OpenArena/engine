@@ -1,3 +1,4 @@
+
 /*
 ===========================================================================
 Copyright (C) 1999-2005 Id Software, Inc.
@@ -49,6 +50,7 @@ typedef unsigned int glIndex_t;
 #define SHADERNUM_BITS	14
 #define MAX_SHADERS		(1<<SHADERNUM_BITS)
 
+extern qboolean    textureCompressionSupport;	// leilei - compressed texture
 extern qboolean    palettedTextureSupport;	// leilei - paletted texture
 
 typedef struct dlight_s {
@@ -1442,6 +1444,7 @@ extern	cvar_t	*r_lensReflection1;
 extern	cvar_t	*r_lensReflection2;
 extern	cvar_t	*r_lensReflectionBrightness;
 
+extern cvar_t	*r_loadDDS;				// leilei - Compressed Texture
 extern cvar_t	*r_ext_paletted_texture;		// leilei - Paletted Texture
 extern cvar_t	*r_ext_gamma_control;			// leilei - 3dfx gamma control
 extern	cvar_t	*r_specMode;		
@@ -2171,7 +2174,7 @@ void R_LoadJPG( const char *name, byte **pic, int *width, int *height );
 void R_LoadPCX( const char *name, byte **pic, int *width, int *height );
 void R_LoadPNG( const char *name, byte **pic, int *width, int *height );
 void R_LoadTGA( const char *name, byte **pic, int *width, int *height );
-
+//void R_LoadDDS( const char *name, byte **pic, int *width, int *height );
 /*
 =============================================================
 =============================================================

@@ -531,8 +531,8 @@ void R_ImageList_f( void ) {
 			sizeSuffix = "Gb";
 		}
 
-		//ri.Printf(PRINT_ALL, "%4i: %4ix%4i %s %4i%s %s\n", i, image->uploadWidth, image->uploadHeight, format, displaySize, sizeSuffix, image->imgName);
-		ri.Printf(PRINT_ALL, "%4i: %4ix%4i %s %4i%s %s %f %f\n", i, image->uploadWidth, image->uploadHeight, format, displaySize, sizeSuffix, image->imgName, image->loadTime, image->procTime);
+		ri.Printf(PRINT_ALL, "%4i: %4ix%4i %s %4i%s %s\n", i, image->uploadWidth, image->uploadHeight, format, displaySize, sizeSuffix, image->imgName);
+		//ri.Printf(PRINT_ALL, "%4i: %4ix%4i %s %4i%s %s %f %f\n", i, image->uploadWidth, image->uploadHeight, format, displaySize, sizeSuffix, image->imgName, image->loadTime, image->procTime);
 
 		estTotalSize += estSize;
 		estTotalTimeLoaded += image->loadTime + image->procTime;
@@ -2131,6 +2131,10 @@ Finds or loads the given image.
 Returns NULL if it fails, not a default image.
 ==============
 */
+#ifdef BROKEN_DDS
+// DDS/DXT
+image_t        *R_LoadDDSImage(const char *name, int bits,  filterType_t filterType, wrapType_t wrapType);
+#endif
 image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 {
 	image_t	*image;
@@ -2140,7 +2144,9 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 	long	hash;
 	float oldtime;
 	float loadtime;
-
+#ifdef BROKEN_DDS
+	char  ddsName[1024];
+#endif
 	if (!name) {
 		return NULL;
 	}
@@ -2162,6 +2168,31 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 			return image;
 		}
 	}
+#ifdef BROKEN_DDS
+	// leilei - DDS - do it here, so we can have a hardware compressed texture instead. The normal means of texture loading expects pixels to be returned which we won't do.
+	if(textureCompressionSupport && r_loadDDS->integer)
+	{
+		int bits;	// no bits
+		int whatclamp;
+		Q_strncpyz(ddsName, name, sizeof(ddsName));
+		COM_StripExtension(ddsName, ddsName, sizeof(ddsName));
+		Q_strcat(ddsName, sizeof(ddsName), ".dds");
+
+	//	if (glWrapClampMode == GL_CLAMP_TO_EDGE)
+	//	whatclamp = WT_CLAMP;
+	//	else
+	//	whatclamp = WT_REPEAT;
+		// try to load a customized .dds texture
+		
+		image = R_LoadDDSImage(ddsName, bits, 0, whatclamp);
+		if(image != NULL)
+		{
+		//	ri.Printf(PRINT_ALL, "found custom .dds '%s'\n", ddsName);
+			return image;
+		}
+	}
+
+#endif
 
 	// leilei - Detail texture hack
 	//	    to kill artifacts of shimmer of pattern of terrible
@@ -2953,3 +2984,44 @@ void	R_SkinList_f( void ) {
 	ri.Printf (PRINT_ALL, "------------------\n");
 }
 
+#ifdef BROKEN_DDS
+// leilei - for DDS loading, which relies on this function...
+/*
+================
+R_AllocImage
+================
+*/
+image_t        *R_AllocImage(const char *name, qboolean linkIntoHashTable)
+{
+	image_t        *image;
+	long            hash;
+	char            buffer[1024];
+
+//  if(strlen(name) >= MAX_QPATH)
+	if(strlen(name) >= 1024)
+	{
+		ri.Error(ERR_DROP, "R_AllocImage: \"%s\" image name is too long\n", name);
+		return NULL;
+	}
+
+	image = ri.Hunk_Alloc(sizeof(image_t), h_low);
+	Com_Memset(image, 0, sizeof(image_t));
+
+
+	qglGenTextures(1, &image->texnum);
+
+	//Com_AddToGrowList(&tr.images, image);
+
+	Q_strncpyz(image->imgName, name, sizeof(image->imgName));
+
+	if(linkIntoHashTable)
+	{
+		Q_strncpyz(buffer, name, sizeof(buffer));
+		hash = generateHashValue(buffer);
+		image->next = hashTable[hash];
+		hashTable[hash] = image;
+	}
+
+	return image;
+}
+#endif

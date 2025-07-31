@@ -112,6 +112,12 @@ GLvoid (APIENTRYP qglGetVertexAttribPointervARB) (GLuint index, GLenum pname, GL
 GLvoid (APIENTRYP qglColorTableEXT)( GLint, GLint, GLint, GLint, GLint, const GLvoid *);
 GLvoid (APIENTRYP qglColorTableSGI)( GLint, GLint, GLint, GLint, GLint, const GLvoid *);
 
+// leilei - DDS/DXT
+
+GLvoid (APIENTRYP qglCompressedTexImage2DARB) (GLenum, GLint, GLenum, GLsizei, GLsizei, GLint, GLsizei, const GLvoid *);
+GLvoid (APIENTRYP qglColorTableEXT)( GLint, GLint, GLint, GLint, GLint, const GLvoid *);
+GLvoid (APIENTRYP qglColorTableSGI)( GLint, GLint, GLint, GLint, GLint, const GLvoid *);
+
 /*
 typedef enum {
 	GLHW_GENERIC,			// where everthing works the way it should
@@ -271,6 +277,26 @@ void GLimp_InitExtraExtensions()
 	else
 	{
 		ri.Printf( PRINT_ALL, "...GL_EXT_paletted_texture not found\n" );
+	}
+	// leilei  - DDS/DXT
+	textureCompressionSupport = qfalse;
+	if ( GLimp_HaveExtension( "GL_ARB_texture_compression" ) )
+	{
+		if ( r_loadDDS->integer ) {
+			qglCompressedTexImage2DARB = (GLvoid (APIENTRYP)(GLenum, GLint, GLenum, GLsizei, GLsizei, GLint, GLsizei, const GLvoid *)) SDL_GL_GetProcAddress("glCompressedTexImage2DARB");
+			{
+				ri.Printf( PRINT_ALL, "...using GL_ARB_texture_compression\n");
+				textureCompressionSupport = qtrue;
+			}
+		}
+		else
+		{
+			ri.Printf( PRINT_ALL, "...ignoring GL_ARB_texture_compression\n" );
+		}
+	}
+	else
+	{
+		ri.Printf( PRINT_ALL, "...GL_ARB_texture_compression not found\n" );
 	}
 
 #ifdef _WIN32

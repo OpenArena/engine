@@ -258,7 +258,7 @@ ifeq ($(WINFOUR),1)
   BASE_CFLAGS += -DUSE_INTERNAL_JPEG
   SDL_VERSION=1
   USE_CURL=0
-  CLIENTBIN=oa95
+ # CLIENTBIN=oa95
 endif
 
 #############################################################################
@@ -1175,7 +1175,7 @@ endif
 ifeq ($(NO_STRIP),1)
   STRIP_FLAG =
 else
-  STRIP_FLAG = -s
+  STRIP_FLAG = -s 
 endif
 
 BASE_CFLAGS += -DPRODUCT_VERSION=\\\"$(VERSION)\\\"
@@ -1288,7 +1288,7 @@ endef
 #############################################################################
 
 default: release
-all: debug release
+all: debug release 
 
 debug:
 	@$(MAKE) targets B=$(BD) CFLAGS="$(CFLAGS) $(BASE_CFLAGS) $(DEPEND_CFLAGS)" \
@@ -1778,6 +1778,7 @@ Q3ROAOBJ = \
   $(B)/renderer_oa/tr_image_jpg.o \
   $(B)/renderer_oa/tr_image_bmp.o \
   $(B)/renderer_oa/tr_image_tga.o \
+  $(B)/renderer_oa/tr_image_dds.o \
   $(B)/renderer_oa/tr_image_pcx.o \
   $(B)/renderer_oa/tr_init.o \
   $(B)/renderer_oa/tr_light.o \
@@ -1852,6 +1853,7 @@ Q3RSOFTOBJ = \
   $(B)/renderer_oa/tr_image_jpg.o \
   $(B)/renderer_oa/tr_image_bmp.o \
   $(B)/renderer_oa/tr_image_tga.o \
+  $(B)/renderer_oa/tr_image_dds.o \
   $(B)/renderer_oa/tr_image_pcx.o \
   $(B)/renderer_oa/tr_init.o \
   $(B)/renderer_oa/tr_light.o \

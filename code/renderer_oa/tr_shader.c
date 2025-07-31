@@ -2988,7 +2988,7 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 				ri.Printf( PRINT_WARNING, "WARNING: missing parameters for rgbMod in shader '%s'\n", shader.name );
 				continue;
 			}
-			if ( !Q_stricmp( token, "glow" ) )
+			else if ( !Q_stricmp( token, "glow" ) )
 			{
 				// TODO: Parse "entity" and "vertex" for their colors, for railguns and maps
 				token = COM_ParseExt( text, qfalse );
@@ -3008,7 +3008,7 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 
 				stage->rgbMod = CMOD_GLOW;
 			}
-			if ( !Q_stricmp( token, "uvcol" ) )
+			else if ( !Q_stricmp( token, "uvcol" ) )
 			{
 				// Parse color
 				token = COM_ParseExt( text, qfalse );
@@ -3028,22 +3028,22 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 
 				stage->rgbMod = CMOD_UVCOL;
 			}
-			if ( !Q_stricmp( token, "normtoalpha" ) )
+			else if ( !Q_stricmp( token, "normtoalpha" ) )
 			{
 				// normalize colors, but average color prior is alpha.
 				stage->rgbMod = CMOD_NORMALIZETOALPHA;
 			}
-			if ( !Q_stricmp( token, "normtoalphafast" ) )
+			else if ( !Q_stricmp( token, "normtoalphafast" ) )
 			{
 				// normalize and use the first vert's color on whole surface, but average color prior is alpha.
 				stage->rgbMod = CMOD_NORMALIZETOALPHAFAST;
 			}
-			if ( !Q_stricmp( token, "lighting" ) )
+			else if ( !Q_stricmp( token, "lighting" ) )
 			{
 				// modulate a standard diffuse light on top of existing vertex colors
 				stage->rgbMod = CMOD_LIGHTING;
 			}
-			if ( !Q_stricmp( token, "opaque" ) )
+			else if ( !Q_stricmp( token, "opaque" ) )
 			{
 				// modulate a standard diffuse light on top of existing vertex colors
 				stage->rgbMod = CMOD_OPAQUE;

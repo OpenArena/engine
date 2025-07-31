@@ -29,6 +29,7 @@ int         maxAnisotropy = 0;
 float       displayAspect = 0.0f;
 qboolean    vertexShaders = qfalse;
 qboolean	postprocess = qfalse;
+qboolean    textureCompressionSupport = qfalse;		// leilei - compressed textures
 qboolean    palettedTextureSupport = qfalse;		// leilei - paletted textures
 
 char 		depthimage;
@@ -105,6 +106,7 @@ cvar_t	*r_ext_texture_env_add;
 cvar_t	*r_ext_texture_filter_anisotropic;
 cvar_t	*r_ext_max_anisotropy;
 cvar_t	*r_ext_vertex_shader;
+cvar_t	*r_loadDDS;			// leilei - loading DDS textures
 cvar_t	*r_ext_paletted_texture;	// leilei - Paletted Texture
 cvar_t	*r_ext_gamma_control;		// leilei - 3dfx gamma control
 cvar_t	*r_postprocess;
@@ -1134,6 +1136,7 @@ void R_Register( void )
 	r_ext_texture_filter_anisotropic = ri.Cvar_Get( "r_ext_texture_filter_anisotropic",
 	                                   "0", CVAR_ARCHIVE | CVAR_LATCH );
 	r_ext_max_anisotropy = ri.Cvar_Get( "r_ext_max_anisotropy", "2", CVAR_ARCHIVE | CVAR_LATCH );
+	r_loadDDS = ri.Cvar_Get( "r_loadDDS", "1", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - compressed texture support
 	r_ext_paletted_texture = ri.Cvar_Get( "r_ext_paletted_texture", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - paletted texture support
 	r_ext_gamma_control = ri.Cvar_Get( "r_ext_gamma_control", "1", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - 3dfx gamma support
 
