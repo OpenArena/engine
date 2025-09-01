@@ -5,7 +5,7 @@ client and server.
 
 ## Building ##
 
-This a standard ioquake3 build which they describe [here](http://wiki.ioquake3.org/Building_ioquake3)
+This a standard ioquake3 build which they describe [here](https://web.archive.org/web/20190522123759/http://wiki.ioquake3.org/Building_ioquake3)
 
 It's not an autotools based build.  If you don't have the dependencies, it
 will break in the middle of the build.
