@@ -1183,6 +1183,7 @@ BASE_CFLAGS += -Wformat=2 -Wno-format-zero-length -Wformat-security -Wno-format-
 BASE_CFLAGS += -Wstrict-aliasing=2 -Wmissing-format-attribute
 BASE_CFLAGS += -Wdisabled-optimization
 BASE_CFLAGS += -Werror-implicit-function-declaration
+BASE_CFLAGS += -Wno-int-conversion
 
 ifeq ($(V),1)
 echo_cmd=@:

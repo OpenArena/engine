@@ -1588,7 +1588,7 @@ static void RB_UVColor( unsigned char *colors, int glowcol, int fx )
 
 	v = tess.xyz[0];
 	normal = tess.normal[0];
-	texc = tess.texCoords[0];
+	texc = (float*) tess.texCoords[0];
 
 	numVertexes = tess.numVertexes;
 	for (i = 0 ; i < numVertexes ; i++, v += 4, texc+=2 ) {
