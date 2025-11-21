@@ -1845,6 +1845,13 @@ void RB_CalcDiffuseColor( unsigned char *colors )
 		RB_CalcDiffuseColor_scalar( colors );
 	}
 
+	// leilei - glow property
+	if ((backEnd.currentEntity->e.glow >= 1337 && backEnd.currentEntity->e.glow <= 1340 )) // look for 1337-1340 as compatibility so we don't get malformed glows from old cgames
+	{
+		RB_GlowBlend( colors, backEnd.currentEntity->e.glowcol, (backEnd.currentEntity->e.glow - 1337) ); 
+	}
+
+
 }
 
 
@@ -2203,6 +2210,11 @@ void RB_CalcMaterials( unsigned char *colors, int ambient, int diffuse, int spec
 	// TODO: Low detail materials
 	RB_CalcMaterialColor( colors, 1, ambient, diffuse, specular, emissive, spechard, alpha );
 
+	// leilei - glow property
+	if ((backEnd.currentEntity->e.glow >= 1337 && backEnd.currentEntity->e.glow <= 1340 )) // look for 1337-1340 as compatibility so we don't get malformed glows from old cgames
+	{
+		RB_GlowBlend( colors, backEnd.currentEntity->e.glowcol, (backEnd.currentEntity->e.glow - 1337) ); 
+	}
 }
 
 

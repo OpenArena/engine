@@ -122,6 +122,10 @@ typedef struct {
 	vec3_t		eyepos[2];			// looking from
 	vec3_t		eyelook;			// looking from
 
+	// leilei - glow
+
+	int		glow;				// glow security + fx
+	int		glowcol;			// glow color in hexadecimal
 
 } refEntity_t;
 

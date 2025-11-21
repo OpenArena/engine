@@ -1457,6 +1457,7 @@ void RB_ShowImages( void ) {
 	image_t	*image;
 	float	x, y, w, h;
 	int		start, end;
+	float col = 1 * tr.identityLight;	// leilei - overbright fix
 
 	if ( !backEnd.projection2D ) {
 		RB_SetGL2D();
@@ -1484,6 +1485,7 @@ void RB_ShowImages( void ) {
 
 		GL_Bind( image );
 		qglBegin (GL_QUADS);
+		qglColor3f (col,col,col);	// leilei - overbright fix
 		qglTexCoord2f( 0, 0 );
 		qglVertex2f( x, y );
 		qglTexCoord2f( 1, 0 );

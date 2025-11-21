@@ -2354,6 +2354,56 @@ image_t	*R_FindImageFileIfItsThere( const char *name, imgType_t type, imgFlags_t
 }
 
 
+
+
+/*
+================
+Rebecca Heineman
+
+   1963-2025
+
+Jennell Jaquays
+
+   1956-2024
+================
+*/
+
+static void R_ebeccaHeineman( void ) {
+	int		x,y;
+	byte	data[16][16][4];
+
+	for (x=0 ; x<16 ; x++) {
+		for (y=0 ; y<16 ; y++) {
+
+			if (y<3 || y>12) // blue
+			{
+				data[y][x][0] = 31;
+				data[y][x][1] = 206;
+				data[y][x][2] = 250;
+			}
+			else if (y<6 || y>9) // pink
+			{
+				data[y][x][0] = 245;
+				data[y][x][1] = 169;
+				data[y][x][2] = 184;
+			}
+			else			// white
+			{
+				data[y][x][0] = 255;
+				data[y][x][1] = 255;
+				data[y][x][2] = 255;
+			}
+		//	data[y][x][0] = 
+		//	data[y][x][1] = 
+		//	data[y][x][2] = b;
+			data[y][x][3] = 255;			
+		}
+	}
+	tr.transRights = R_CreateImage("thankYouRebeccaHeineman&JennellJaquays", (byte *)data, 16, 16, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
+}
+
+
+
 /*
 ================
 R_CreateDlightImage
@@ -2561,6 +2611,7 @@ void R_CreateBuiltinImages( void ) {
 		tr.scratchImage[x] = R_CreateImage("*scratch", (byte *)data, DEFAULT_SIZE, DEFAULT_SIZE, IMGTYPE_COLORALPHA, IMGFLAG_PICMIP | IMGFLAG_CLAMPTOEDGE, 0);
 	}
 
+	R_ebeccaHeineman();
 
 	R_CreateDlightImage();
 

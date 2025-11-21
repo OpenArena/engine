@@ -1317,7 +1317,7 @@ typedef struct {
 	qboolean				placeholderFogAvail;
 	qboolean				placeholderAvail;
 
-
+	image_t					*transRights;	// leilei
 
 } trGlobals_t;
 
