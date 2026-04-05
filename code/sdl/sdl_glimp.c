@@ -630,12 +630,6 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 	vresWidth = glConfig.vidWidth;
 	vresHeight = glConfig.vidHeight;
 
-
-
-
-	vresWidth = 640;
-	vresHeight = 480;
-
 #if SDL_MAJOR_VERSION != 2
 	screen = vidscreen;
 #endif
