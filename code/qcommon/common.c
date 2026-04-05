@@ -2773,7 +2773,7 @@ void Com_Init( char *commandLine ) {
 	Sys_Init();
 
 	if( Sys_WritePIDFile( ) ) {
-#ifndef DEDICATED
+#if !defined(DEDICATED) && !defined(MACOS_X)
 		const char *message = "The last time " CLIENT_WINDOW_TITLE " ran, "
 			"it didn't exit properly. This may be due to inappropriate video "
 			"settings. Would you like to start with \"safe\" video settings?";
