@@ -80,6 +80,13 @@ ifeq ($(COMPILE_ARCH),axp)
   COMPILE_ARCH=alpha
 endif
 
+ifeq ($(COMPILE_ARCH),arm)
+  COMPILE_ARCH=aarch64
+endif
+ifeq ($(COMPILE_ARCH),arm64)
+  COMPILE_ARCH=aarch64
+endif
+
 ifndef ARCH
 ARCH=$(COMPILE_ARCH)
 endif
@@ -458,7 +465,9 @@ else # ifeq Linux
 #############################################################################
 
 ifeq ($(PLATFORM),darwin)
-  HAVE_VM_COMPILED=true
+  ifneq ($(findstring $(ARCH),x86 x86_64 ppc ppc64),)
+    HAVE_VM_COMPILED=true
+  endif
   LIBS = -framework Cocoa
   CLIENT_LIBS=
   RENDERER_LIBS=
@@ -481,6 +490,9 @@ ifeq ($(PLATFORM),darwin)
   endif
   ifeq ($(ARCH),x86_64)
     OPTIMIZEVM += -arch x86_64 -mfpmath=sse
+  endif
+  ifeq ($(ARCH),aarch64)
+    OPTIMIZEVM += -arch arm64
   endif
 
   # When compiling on OSX for OSX, we're not cross compiling as far as the
