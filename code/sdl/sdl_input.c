@@ -1185,17 +1185,26 @@ static void IN_ProcessEvents( void )
 				{
 					case SDL_WINDOWEVENT_RESIZED:
 						{
-							char width[32], height[32];
-							Com_sprintf( width, sizeof( width ), "%d", e.window.data1 );
-							Com_sprintf( height, sizeof( height ), "%d", e.window.data2 );
-							Cvar_Set( "r_customwidth", width );
-							Cvar_Set( "r_customheight", height );
-							Cvar_Set( "r_mode", "-1" );
+							int newWidth = e.window.data1;
+							int newHeight = e.window.data2;
 
-							// Wait until user stops dragging for 1 second, so
-							// we aren't constantly recreating the GL context while
-							// he tries to drag...
-							vidRestartTime = Sys_Milliseconds( ) + 1000;
+							// Ignore spurious resize events fired when the window is
+							// recreated at the same size (e.g. after vid_restart on macOS).
+							if( newWidth != Cvar_VariableIntegerValue( "r_customwidth" ) ||
+							    newHeight != Cvar_VariableIntegerValue( "r_customheight" ) )
+							{
+								char width[32], height[32];
+								Com_sprintf( width, sizeof( width ), "%d", newWidth );
+								Com_sprintf( height, sizeof( height ), "%d", newHeight );
+								Cvar_Set( "r_customwidth", width );
+								Cvar_Set( "r_customheight", height );
+								Cvar_Set( "r_mode", "-1" );
+
+								// Wait until user stops dragging for 1 second, so
+								// we aren't constantly recreating the GL context while
+								// he tries to drag...
+								vidRestartTime = Sys_Milliseconds( ) + 1000;
+							}
 						}
 						break;
 
