@@ -811,6 +811,7 @@ char	*Q_strupr( char *s1 );
 const char	*Q_stristr( const char *s, const char *find);
 
 // buffer size safe library replacements
+char	*Q_strncpy(char *strDest, const char *strSource, size_t count);
 void	Q_strncpyz( char *dest, const char *src, int destsize );
 void	Q_strcat( char *dest, int size, const char *src );
 

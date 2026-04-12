@@ -790,6 +790,25 @@ int Q_vsnprintf(char *str, size_t size, const char *format, va_list ap)
 #endif
 
 /*
+ Copied from code/game/bg_lib.c
+ It is here to avoid undifined behavior when source and destination overlap.
+ This is used quite a lot in the code.
+ */
+char *Q_strncpy(char *strDest, const char *strSource, size_t count) {
+	char *s;
+
+	s = strDest;
+	while (*strSource && count) {
+		*s++ = *strSource++;
+		count--;
+	}
+	while (count--) {
+		*s++ = 0;
+	}
+	return strDest;
+}
+
+/*
 =============
 Q_strncpyz
  
@@ -807,7 +826,7 @@ void Q_strncpyz( char *dest, const char *src, int destsize ) {
 		Com_Error(ERR_FATAL,"Q_strncpyz: destsize < 1" ); 
 	}
 
-	strncpy( dest, src, destsize-1 );
+	Q_strncpy( dest, src, destsize-1 );
   dest[destsize-1] = 0;
 }
                  
