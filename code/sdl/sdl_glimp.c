@@ -51,10 +51,6 @@ typedef void *QGLContext;
 static QGLContext opengl_context;
 #endif
 
-//int vresWidth;		
-//int vresHeight;		
-
-
 typedef enum
 {
 	RSERR_OK,
@@ -626,9 +622,6 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 		return RSERR_INVALID_MODE;
 	}
 #endif
-	
-	vresWidth = glConfig.vidWidth;
-	vresHeight = glConfig.vidHeight;
 
 #if SDL_MAJOR_VERSION != 2
 	screen = vidscreen;
