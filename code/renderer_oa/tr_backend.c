@@ -1121,7 +1121,7 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	RB_ShadowFinish();		
 
 	// add the particles
-	//R_AddParticles ();
+	
 	R_RenderParticles ();
 	RB_RenderFlashblends();		
 
@@ -1148,8 +1148,6 @@ RB_SetGL2D
 
 ================
 */
-extern int vresWidth;
-extern int vresHeight;
 
 void	RB_SetGL2D (void) {
 
@@ -1266,8 +1264,6 @@ void RE_StretchRaw (int x, int y, int w, int h, int cols, int rows, const byte *
 	qglVertex2f (x, y+h);
 	qglEnd ();
 }
-
-extern int	force32upload;		
 
 void RE_UploadCinematic (int w, int h, int cols, int rows, const byte *data, int client, qboolean dirty) {
 

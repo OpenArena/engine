@@ -29,6 +29,22 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // LEILEI'S PARTICLES!
 //
 
+/*
+
+	TODO:
+	- FIX the particles not spawning correctly
+	- Refactor all the spawning functions into emitting structs
+	- and then make it possible to get those externally scriptable 
+	- Refactor all the four-phase particle color ramps into hex values (and decode them)
+	- Preserve volume on spark effects
+	- Quake particle effects
+	- Atlases
+	- Trail system 
+	- Get dynamic lights working
+
+*/
+
+
 // partially ported out of cg_marks.c
 // and heavily improved upon
 
@@ -48,6 +64,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #define LFXTRAIL	8
 #define LFXBUBBLE	9
 #define	LFXQUAKE	10
+#define	LFXDLIGHT	11
 
 
 // color types
@@ -124,6 +141,22 @@ typedef struct particle_s {
 	int			fogNum;
 } particle_t;
 
+// Emitters tell what to spawn when an effect is called
+
+typedef struct pemit_s {
+	int	type;
+	int 	count;
+} pemit_t;
+
+
+// Specified effects will have names and emitters assigned so scripts can replace them
+typedef struct peffect_s {
+
+	pemit_t emit[12];		// an effect can have up to 12 emitters
+} peffect_t;
+
+
+
 void R_AddParticleToScene (particle_t *p, vec3_t org, float alpha);
 void R_LetsBounce ( particle_t *p);
 
@@ -139,6 +172,7 @@ static shader_t	*subball;
 static shader_t	*modball;
 static shader_t	*alfball;
 
+shader_t *CreateInternalLFXShaders( int who, int blend,  const char *shadername );
 
 static shader_t	*blood1;
 static shader_t	*blood2;
@@ -195,7 +229,8 @@ typedef enum {
 	P_QUAKEEXPLODE2,
 	P_QUAKEBLOB,
 	P_QUAKEBLOB2,
-	P_QUAKE
+	P_QUAKE,
+	P_DLIGHT
 } particle_type_t;
 
 
@@ -278,7 +313,7 @@ void R_ClearParticles (void)
 	initparticles = qtrue;
 }
 
-
+extern int			r_numdlights;
 
 /*
 =====================
@@ -293,7 +328,7 @@ void R_AddParticleToScene (particle_t *p, vec3_t org, float alpha)
 	float		height;
 	float		time, time2;
 	float		ratio;
-	int		fogNum = 0;
+	int		fogNum = tess.fogNum;
 	float		invratio;
 	vec4_t		color;
 
@@ -312,7 +347,7 @@ void R_AddParticleToScene (particle_t *p, vec3_t org, float alpha)
 	time2 = p->endtime - p->time;
 	ratio = time / time2;
 
-	// Do us some fogging fogger
+/*
 	{
 		byte fogFactors[3] = {255, 255, 255};
 		if(tr.world && p->fogNum > 0 && p->fogNum < tr.world->numfogs) {
@@ -324,7 +359,7 @@ void R_AddParticleToScene (particle_t *p, vec3_t org, float alpha)
 
 		}
 	}
-
+*/
 
 
 	{
@@ -426,6 +461,9 @@ void R_AddParticleToScene (particle_t *p, vec3_t org, float alpha)
 				AngleVectors ( rotate_ang, NULL, right, up);
 			}
 
+
+
+
 			RB_BeginSurface( p->pshader, fogNum );
 			VectorMA (org, -height, right, point);
 			VectorMA (point, -width, up, point);
@@ -484,6 +522,7 @@ void R_AddParticleToScene (particle_t *p, vec3_t org, float alpha)
 			RB_EndSurface();
 
 		}
+
 		else if (p->rendertype == LFXSPARK) {
 			// STRETCHY SPARK sprite - used for sparks etc
 			vec3_t	argles;
@@ -687,6 +726,11 @@ void R_AddParticleToScene (particle_t *p, vec3_t org, float alpha)
 			ind+=4;
 			RB_EndSurface();
 		}
+	/*	else if (p->rendertype == LFXDLIGHT) {
+			// not a sprite, this just makes a dynamic light
+		//	RE_AddLightToScene  ( p->org, 333, 255, 255, 255 );
+		}
+	*/
 		else if (p->rendertype == LFXTRAIL) {
 			// STRETCHY TRAIL sprite - used for..... i dunno
 			// like burst but splits into more trails when the certain length is achieved
@@ -1865,6 +1909,63 @@ void R_LFX_Burst (const vec3_t org, const vec3_t dir, float spread, float speed,
 }
 
 
+
+void R_LFX_Dlight (const vec3_t org, const vec3_t dir, float spread, float speed, vec4_t color1, vec4_t color2, vec4_t color3, vec4_t color4, vec4_t color5, int count, int duration, float scaleup, int blendfunc)
+{
+	particle_t	*p;
+	if (!free_particles)
+		return;
+	p = free_particles;
+	free_particles = p->next;
+	p->next = active_particles;
+	active_particles = p;
+
+	p->time = THEtime;
+	p->endtime = THEtime+ duration;
+	p->startfade = THEtime;
+	p->rendertype = LFXDLIGHT;
+	//p->color = EMISIVEFADE;
+	p->alpha = 1.0f;
+	p->alphavel = 0.0f;
+	//p->qolor = (color & ~7) + (rand() & 7);
+	p->height = p->width = scaleup;
+	p->endheight = p->height;
+	p->endwidth = p->width;
+	p->rotate = qfalse; 
+	p->roll = 0;
+	p->accel[0] =	p->accel[1] =	p->accel[2] = 0;
+	p->cols[0][0] = color1[0];
+	p->cols[1][0] = color1[1];
+	p->cols[2][0] = color1[2];
+	p->cols[3][0] = color1[3];
+	p->cols[0][1] = color2[0];
+	p->cols[1][1] = color2[1];
+	p->cols[2][1] = color2[2];
+	p->cols[3][1] = color2[3];
+	p->cols[0][2] = color3[0];
+	p->cols[1][2] = color3[1];
+	p->cols[2][2] = color3[2];
+	p->cols[3][2] = color3[3];
+	p->cols[0][3] = color4[0];
+	p->cols[1][3] = color4[1];
+	p->cols[2][3] = color4[2];
+	p->cols[3][3] = color4[3];
+	p->cols[0][4] = color5[0];
+	p->cols[1][4] = color5[1];
+	p->cols[2][4] = color5[2];
+	p->cols[3][4] = color5[3];
+	p->colortype = P_LFX;
+	VectorCopy(org, p->org);
+	p->accel[0] = p->accel[1] = p->accel[2] = 0;
+	p->vel[0] = p->vel[1] = p->vel[2] = 0;
+	// prepare the initial stretch frame
+	p->airfriction = 0;
+	p->bounce = 0;
+	
+}
+
+
+
 // i'll probably fail, but still. GENERIC FUNCTION
 void R_LFX_Generic (int type, vec3_t org, vec3_t dir, float alpha, int spread, int orgoff, float randroll, float speed, int cred, int cgreen, int cblue, int count, int duration, float scale, float scaleup, float bounce, float airfriction, float grav, float rollfriction, shader_t *shader)
 {
@@ -2216,15 +2317,15 @@ void LFX_ShaderInit ( void )
 	addsmoke = R_FindShader( "psmoke-add", LIGHTMAP_NONE, qtrue );
 	subsmoke = R_FindShader( "psmoke-sub", LIGHTMAP_NONE, qtrue );
 	modsmoke = R_FindShader( "psmoke-mod", LIGHTMAP_NONE, qtrue );
-	alfsmoke = R_FindShader( "psmoke-blend", LIGHTMAP_NONE, qtrue );
+	alfsmoke = R_FindShader("psmoke-blend",LIGHTMAP_NONE, qtrue );
 
 	blood1 = R_FindShader( "pblood1", LIGHTMAP_NONE, qtrue );
-	blood2 = R_FindShader( "pblood1", LIGHTMAP_NONE, qtrue );
+	blood2 = R_FindShader( "pblood2", LIGHTMAP_NONE, qtrue );
 
 	watsplash = R_FindShader( "pwatersplash", LIGHTMAP_NONE, qtrue );
-	watburst = R_FindShader( "pwaterburst", LIGHTMAP_NONE, qtrue );
+	watburst  = R_FindShader( "pwaterburst", LIGHTMAP_NONE, qtrue );
 	watbubble = R_FindShader( "pwaterbubble", LIGHTMAP_NONE, qtrue );
-	fireball = R_FindShader( "pfireball", LIGHTMAP_NONE, qtrue );
+	fireball  = R_FindShader( "pfireball", LIGHTMAP_NONE, qtrue );
 
 	addball = R_FindShader( "pball-add", LIGHTMAP_NONE, qtrue );
 	subball = R_FindShader( "pball-sub", LIGHTMAP_NONE, qtrue );
@@ -2236,6 +2337,26 @@ void LFX_ShaderInit ( void )
 	subshock = R_FindShader( "pshock-sub", LIGHTMAP_NONE, qtrue );
 	modshock = R_FindShader( "pshock-mod", LIGHTMAP_NONE, qtrue );
 	alfshock = R_FindShader( "pshock-blend", LIGHTMAP_NONE, qtrue );
+
+// fallback to builtin textures if these shaders failed to load.
+// or allow simpler 32x32 textures anyway
+
+	if (!addsmoke || !r_particlesTex->value) addsmoke = CreateInternalLFXShaders( 1, 1, "psmoke-add" );
+	if (!alfsmoke || !r_particlesTex->value) alfsmoke = CreateInternalLFXShaders( 1, 0, "psmoke-blend" );
+
+	if (!addshock || !r_particlesTex->value) addshock = CreateInternalLFXShaders( 1, 1, "pshock-add" );
+	if (!alfshock || !r_particlesTex->value) alfshock = CreateInternalLFXShaders( 1, 0, "pshock-blend" );
+
+	if (!watsplash || !r_particlesTex->value) watsplash = CreateInternalLFXShaders( 1, 1, "pwatsplash" );
+	if (!watburst  || !r_particlesTex->value) watburst  = CreateInternalLFXShaders( 1, 1, "pwatburst"  );
+	if (!watbubble || !r_particlesTex->value) watbubble = CreateInternalLFXShaders( 1, 1, "pwatbubble" );
+
+	if (!addball || !r_particlesTex->value) addball = CreateInternalLFXShaders( 0, 1, "pball-add" );
+	if (!alfball || !r_particlesTex->value) alfball = CreateInternalLFXShaders( 0, 0, "pball-blend" );
+
+	if (!blood1 || !r_particlesTex->value) blood1 = CreateInternalLFXShaders( 1, 0, "pblood1" );	// smoke
+	if (!blood2 || !r_particlesTex->value) blood2 = CreateInternalLFXShaders( 1, 0, "pblood2" );	// smoke
+	if (!fireball || !r_particlesTex->value) fireball = CreateInternalLFXShaders( 1, 1, "pfireball" );
 
 	R_ClearParticles ();
 }
@@ -2355,6 +2476,7 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		colory4[3] = 0.0;
 
 		R_LFX_Burst (sprOrg, sprVel, 8366, 2, colory, colory2, colory3, colory4, colory4, 4, 50, 2, 1);
+
 
 		VectorMA( origin, 1, dir, sprOrg );
 		VectorScale( dir, 1, sprVel );
@@ -2598,9 +2720,9 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		VectorScale( dir, 64, sprVel );
 
 		R_LFX_Burst (sprOrg, sprVel, 175, 15, colory, colory2, colory3, colory4, colory4, 15, 240, 22, 1);
-
+		//R_LFX_Dlight (sprOrg, sprVel, 4000, 1, colory, colory2, colory3, colory4, colory4, 4, 50, 2, 1);
 		R_LFX_Spark (sprOrg, sprVel, 175, 5, colory, colory2, colory3, colory4, colory4, 25, 1240, 0.8f, 1);
-
+		RE_AddRippleToScene( origin, 300 );
 	}
 
 	// BFG
@@ -2654,8 +2776,10 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		VectorScale( dir, 64, sprVel );
 
 		R_LFX_Burst (sprOrg, sprVel, 175, 15, colory, colory2, colory3, colory4, colory4, 15, 140, 32, 1);
-
+		//R_LFX_Dlight (sprOrg, sprVel, 8366, 2, colory, colory2, colory3, colory4, colory4, 4, 50, 2, 1);
 		R_LFX_Spark (sprOrg, sprVel, 175, 5, colory, colory2, colory3, colory4, colory4, 15, 1040, 0.8f, 1);
+		//R_LFX_Dlight (sprOrg, sprVel, 4000, 1, colory, colory2, colory3, colory4, colory4, 4, 50, 2, 1);
+		RE_AddRippleToScene( origin, 300 );
 	}
 
 	// Nail Hit
@@ -2696,7 +2820,7 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		colory4[1] = 0.0;
 		colory4[2] = 0.0;
 		colory4[3] = 0.0;
-
+		RE_AddRippleToScene( origin, 64 );
 		VectorMA( origin, 4, dir, sprOrg );
 		VectorScale( dir, 1, sprVel );
 
@@ -2827,6 +2951,8 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		colory4[2] = 0.0;
 		colory4[3] = 0.0;
 		VectorScale( dir, 39, sprVel );
+		RE_AddRippleToScene( origin, 64 );
+
 		R_LFX_Shock (origin, dir, 0, 0, colory, colory2, colory3, colory4, colory4, 1, 800, 80,14);
 		R_LFX_Burst (sprOrg, sprVel, 22, 266, colory, colory2, colory3, colory4, colory4, 1, 1900, 5, 7);
 		R_LFX_Spark (sprOrg, sprVel, 134, 4, colory, colory2, colory3, colory4, colory4, 7, 1286, 0.5f, 1);

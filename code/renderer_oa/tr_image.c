@@ -21,6 +21,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // tr_image.c
 #include "tr_local.h"
+#include "tr_lfx.h"		// leilei - built-in lfx shaders
+
 
 static byte			 s_intensitytable[256];
 static unsigned char s_gammatable[256];
@@ -30,6 +32,7 @@ int		gl_filter_max = GL_LINEAR;
 
 int		force32upload;		// leilei - hack to get bloom/post to always do 32bit texture
 int		detailhack;		// leilei - hack to fade detail textures, kill repeat patterns
+int		forceindexupload;	// leilei - hack to force to the luminance8 format (for some color-modulated effects)
 int		palettedformat = GL_COLOR_INDEX8_EXT;	// leilei - paletted texture support
 
 
@@ -1426,7 +1429,7 @@ static void Upload32( unsigned *data,
 				{
 					internalFormat = GL_RGB;
 				}
-					if (detailhack) internalFormat = GL_LUMINANCE; // leilei - use paletted mono format for detail textures
+					if (detailhack || forceindexupload) internalFormat = GL_LUMINANCE; // leilei - use paletted mono format for detail textures
 					if (force32upload) internalFormat = GL_RGB8;   // leilei - gets bloom and postproc working on s3tc & 8bit & palettes
 					if ((r_leifx->integer) && (!force32upload)) internalFormat = GL_RGB5;
 			}
@@ -2172,8 +2175,8 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 	// leilei - DDS - do it here, so we can have a hardware compressed texture instead. The normal means of texture loading expects pixels to be returned which we won't do.
 	if(textureCompressionSupport && r_loadDDS->integer)
 	{
-		int bits;	// no bits
-		int whatclamp;
+		int bits = 4;	// no bits
+		int whatclamp = 0;
 		Q_strncpyz(ddsName, name, sizeof(ddsName));
 		COM_StripExtension(ddsName, ddsName, sizeof(ddsName));
 		Q_strcat(ddsName, sizeof(ddsName), ".dds");
@@ -2192,7 +2195,7 @@ image_t	*R_FindImageFile( const char *name, imgType_t type, imgFlags_t flags )
 		}
 	}
 
-#endif
+#endif // BROKEN_DDS
 
 	// leilei - Detail texture hack
 	//	    to kill artifacts of shimmer of pattern of terrible
@@ -2539,6 +2542,88 @@ static void R_CreateFogImage( void ) {
 	force32upload = 0;		// leilei - paletted fog fix
 }
 
+
+/*
+================
+R_CreateLFXImage
+
+leilei - a bunch of functions to make images from the headers we give
+	we do additive and alpha ones separate, as alpha looks much better when there's no dark halo around it.
+================
+*/
+#define	DLIGHT_SIZE	16
+static void R_CreateLFXImage( int it, int blend ) {
+	byte	data[1024][4];
+	int	x=0;
+	
+	if (blend) // add makes a grayscale one
+	for (x=0 ; x<1024 ; x++) {
+		int d;
+		if (it == 1) d= lfx_pix_smoke[x];
+		else if (it == 2) d= lfx_pix_shock[x];
+		else d= lfx_pix_particle[x];
+		data[x][0] = 
+		data[x][1] =  
+		data[x][2] = d;
+		data[x][3] = 255;			
+	}
+	else	// 0 makes an alpha blend one
+	for (x=0 ; x<1024 ; x++) 
+	{
+		int d;
+		if (it == 1) d= lfx_pix_smoke[x];
+		else if (it == 2) d= lfx_pix_shock[x];
+		else d= lfx_pix_particle[x];
+		data[x][0] = 
+		data[x][1] =  
+		data[x][2] = 255;
+		data[x][3] = d;			
+	}
+
+	if (blend) forceindexupload = 1; // to I8
+	if ((it == 1) && (blend == 1))
+		tr.lfx_smoke_add = R_CreateImage("*lfxSmokeAdd", (byte *)data, 32, 32, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
+	else if ((it == 1))
+		tr.lfx_smoke = R_CreateImage("*lfxSmoke", (byte *)data, 32, 32, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
+
+	if ((it == 2) && (blend == 1))
+		tr.lfx_shock_add = R_CreateImage("*lfxShockAdd", (byte *)data, 32, 32, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
+	else if ((it == 2))
+		tr.lfx_shock = R_CreateImage("*lfxShock", (byte *)data, 32, 32, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
+
+	if ((it == 0) && (blend == 1))
+		tr.lfx_particle_add = R_CreateImage("*lfxParticleAdd", (byte *)data, 32, 32, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
+	else
+		tr.lfx_particle = R_CreateImage("*lfxParticle", (byte *)data, 32, 32, IMGTYPE_COLORALPHA, IMGFLAG_CLAMPTOEDGE, 0 );
+	forceindexupload = 0;
+}
+
+/*
+================
+R_CreateJakeImage
+
+leilei - I want to make sure everyone needs to see these flares, 
+	 but also to enforce an indexed format
+================
+*/
+static void R_CreateJakeImage( ) {
+	byte	data[16384][4];
+	int	x=0;
+	
+	for (x=0 ; x<16384 ; x++) {
+		int d;
+		d= flares_pix_jake[x];
+		data[x][0] = 
+		data[x][1] =  
+		data[x][2] = d;
+		data[x][3] = 255;			
+	}
+		forceindexupload = 1; // to I8
+		tr.flare_jake = R_CreateImage("*flareJake", (byte *)data, 128, 128, IMGTYPE_COLORALPHA, IMGFLAG_NONE, 0 );
+		forceindexupload = 0;
+}
+
+
 /*
 ==================
 R_CreateDefaultImage
@@ -2612,6 +2697,14 @@ void R_CreateBuiltinImages( void ) {
 	}
 
 	R_ebeccaHeineman();
+	R_CreateLFXImage(0,0);	// particle
+	R_CreateLFXImage(0,1);
+	R_CreateLFXImage(1,0);	// smoke
+	R_CreateLFXImage(1,1);
+	R_CreateLFXImage(2,0);	// shock
+	R_CreateLFXImage(2,1);
+	R_CreateJakeImage(1);
+
 
 	R_CreateDlightImage();
 
@@ -3035,6 +3128,9 @@ void	R_SkinList_f( void ) {
 	ri.Printf (PRINT_ALL, "------------------\n");
 }
 
+
+
+
 #ifdef BROKEN_DDS
 // leilei - for DDS loading, which relies on this function...
 /*
@@ -3075,4 +3171,4 @@ image_t        *R_AllocImage(const char *name, qboolean linkIntoHashTable)
 
 	return image;
 }
-#endif
+#endif // BROKEN_DDS

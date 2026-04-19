@@ -214,6 +214,7 @@ cvar_t	*r_mockvr;		// Leilei - for debugging PVR only!
 cvar_t	*r_leifx;		// Leilei - leifx nostalgia filter
 cvar_t	*r_shadeMethod;		// Leilei
 cvar_t	*r_particles;		// Leilei - particle effects motif
+cvar_t	*r_particlesTex;	// Leilei - use external shaders for particles
 #ifdef BROKEN_MDRPHYS
 cvar_t	*r_mdrPhysics;		// Leilei - mdr physics
 #endif
@@ -223,11 +224,30 @@ cvar_t	*r_skytess;	// leilei - lower detail of skies
 cvar_t	*r_leidebug;		// Leilei - debug
 cvar_t	*r_leidebugeye;		// Leilei - eye debug
 
-cvar_t	*r_suggestiveThemes;		// leilei - mature content control
-
+cvar_t	*r_suggestiveThemes;	// leilei - mature content control
 cvar_t	*r_textureDither;	// leilei - Dithered texture
-
 cvar_t	*r_lerpbias;		// Leilei - lerping bias
+cvar_t	*r_ripples;		// leilei - Ripples
+
+// leilei - hardware support cvars, for shaders to think about
+
+cvar_t	*glhw_3dfx; 	// 1 = V1/Rush, 2 = V2, 3 = Banshee/V3, 4=Voodoo4/5
+			// V1 cannot handle depth function effects. No clamping on earlier ICDs.
+cvar_t	*glhw_rage; 	// 1 = Rage Pro, 2 = Rage XL, 3 = Rage128
+			// Rage Pro cannot do hardware alpha blends nor can modulate them.
+cvar_t	*glhw_mga;  	// 1 = Mystique, 2 = G100, 3 = G200
+			// Mystique / G100 does not have blending functions and the only alpha blending is dithered.
+cvar_t	*glhw_powervr;  // 1 = PCX2, 2 = Neon250, 3 = KYRO , 4 = GMA
+			// PCX2 does not have blending functions and will always render RGBA4444 textures as a blend.
+			// None of these cards have depth testing. No clamping or rectangle textures on PCX2.
+cvar_t	*glhw_geforce;  // 1 = 256, 2 = 2, 3 = 3, 4 = 4Ti, 5 = FX, 6 = 6, 7 = 7, 8 = 8, 9 = 9, 10 = Tesla
+			// 256 and 2 have early driver issues.
+cvar_t	*glhw_radeon;   // 1 = 7x00, 2 = 8x00-9200, 3 = 9500-x800, 4 = x1x00, 5 = HD2, 6 = HD3-4-5-6, 7 = GCN, 8 = Vega, 9 = RNA
+			// Vega and RNA have driver issues wrt OpenGL 2.
+cvar_t	*glhw_s3;       // 1 = ViRGE, 2 = Trio3D, 3 = Savage3D , 4 = Savage4/ProSavage, 5 = Savage 2000
+cvar_t	*glhw_software;  // 1 = Microsoft, 2 = SGI/Cosmo, 3 = Mesa, 4 = LLVMPipe Gallium, 5 = TinyGL
+			// Varies of pain
+
 
 // leilei - fallback shader hack
 
@@ -397,6 +417,14 @@ qboolean R_GetModeInfo( int *width, int *height, float *windowAspect, int mode )
 		*width = r_customwidth->integer;
 		*height = r_customheight->integer;
 		pixelAspect = r_customPixelAspect->value;
+
+		// leilei - but not too much. HACK bug workaround
+		if (r_customwidth->integer>10000 || r_customheight->integer>10000){
+			vm = &r_vidModes[3];
+			*width  = vm->width;
+			*height = vm->height;
+			pixelAspect = vm->pixelAspect;			
+		}
 	}
 	else {
 		vm = &r_vidModes[mode];
@@ -1313,12 +1341,14 @@ void R_Register( void )
 
 	r_leidebug = ri.Cvar_Get( "r_leidebug", "0" , CVAR_CHEAT);
 	r_particles = ri.Cvar_Get( "r_particles", "0" , CVAR_ARCHIVE | CVAR_LATCH);
+	r_particlesTex = ri.Cvar_Get( "r_particlesTex", "1" , CVAR_ARCHIVE | CVAR_LATCH);
 #ifdef BROKEN_MDRPHYS
 	r_mdrPhysics = ri.Cvar_Get( "r_mdrPhysics", "0" , CVAR_ARCHIVE);
 #endif
 	r_leidebugeye = ri.Cvar_Get( "r_leidebugeye", "0" , CVAR_CHEAT);
 
 	r_lerpbias = ri.Cvar_Get( "r_lerpbias", "-2" , CVAR_ARCHIVE);
+	r_ripples = ri.Cvar_Get( "r_ripples", "1" , CVAR_ARCHIVE);
 
 	r_iconmip = ri.Cvar_Get ("r_iconmip", "0", CVAR_ARCHIVE | CVAR_LATCH );		// leilei - icon mip
 	r_iconBits = ri.Cvar_Get ("r_iconBits", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - icon bits
@@ -1612,6 +1642,10 @@ void R_Init( void )
 #ifdef GLSL_BACKEND
 	R_GLSL_Init();
 #endif
+
+	tr.refdef.enableRipples = 0; // leilei - set this 0 before shaders load, so we can keep the engine calm
+					// on processing unless we really do have a shader with a deformvertexes ripple in it
+					// in which this will be 1.
 	R_InitShaders();
 
 	R_InitSkins();
@@ -1619,7 +1653,6 @@ void R_Init( void )
 	R_ModelInit();
 
 	R_InitFreeType();
-
 
 	err = qglGetError();
 	if ( err != GL_NO_ERROR )

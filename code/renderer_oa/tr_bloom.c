@@ -78,8 +78,6 @@ int		leifxmode;
 int		leifxpass;
 int		fakeit = 0;
 
-extern int vresWidth;
-extern int vresHeight;
 /*
 ==============================================================================
 

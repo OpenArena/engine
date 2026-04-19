@@ -35,6 +35,8 @@ int			r_firstScenePoly;
 
 int			r_numpolyverts;
 
+int			r_numripples;
+int			r_firstSceneRipple;
 
 /*
 ====================
@@ -57,6 +59,9 @@ void R_InitNextFrame( void ) {
 	r_firstScenePoly = 0;
 
 	r_numpolyverts = 0;
+
+	r_numripples = 0;
+	r_firstSceneRipple = 0;
 }
 
 
@@ -70,6 +75,7 @@ void RE_ClearScene( void ) {
 	r_firstSceneDlight = r_numdlights;
 	r_firstSceneEntity = r_numentities;
 	r_firstScenePoly = r_numpolys;
+	r_firstSceneRipple = r_numripples;
 }
 
 /*
@@ -292,6 +298,8 @@ RE_AddLightToScene
 */
 void RE_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b ) {
 	RE_AddDynamicLightToScene( org, intensity, r, g, b, qfalse );
+
+	//RE_AddRippleToScene( org, intensity );
 }
 
 /*
@@ -303,6 +311,93 @@ RE_AddAdditiveLightToScene
 void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, float g, float b ) {
 	RE_AddDynamicLightToScene( org, intensity, r, g, b, qtrue );
 }
+
+
+
+/*
+=====================
+RE_AddRippleToScene
+
+leilei - manage the ripples here. do a delay. just do something
+
+=====================
+*/
+
+float riptime = 0;
+
+
+void RE_AddRippleToScene( const vec3_t org, float intensity ) {
+	ripple_t	*r;
+
+	if ( !tr.registered ) {
+		return;
+	}
+	if ( r_numripples >= MAX_RIPPLES ) {
+		return;
+	}
+	if ( !tr.refdef.enableRipples ) {
+		return;
+	}
+	if ( !r_ripples->value ) {
+		return;
+	}
+
+	r = &backEndData->ripples[r_numripples++];
+
+	while (r->amp >= 0.02f){ // next....
+		if (r_numripples < 0)
+			return; // dont!!!
+		if (r_numripples >= 96)
+			return; // dont!!!
+		r = &backEndData->ripples[r_numripples++]; // Go to the next ripple
+	}
+
+	//ri.Printf( PRINT_DEVELOPER, "RE_AddRippleToScene: numripples is %i\n", r_numripples);
+
+	// Got a clean ripple, initialize it
+	r->timeStart = 	backEnd.refdef.time;
+	r->timeEnd = 	backEnd.refdef.time + (1000);
+	
+	VectorCopy (org, r->origin);
+	r->radius = intensity;
+	r->amp = intensity * 0.12f;
+
+	r->ogAmp = r->amp;
+	r->ogRadius = r->radius;
+
+	if (riptime > tr.refdef.time + 500) // wait a sec, is there a big drift????
+		riptime = 0;
+}
+
+
+void RE_ManageRipples( void ) {
+	ripple_t	*r;
+	int f;
+	float pastrip;
+	float frip;
+	pastrip = tr.refdef.time - riptime;
+	if ( !tr.refdef.enableRipples ) {
+		return;
+	}
+
+	if ( !r_ripples->value ) {
+		return;
+	}
+
+	if (tr.refdef.time < riptime)
+		return;
+
+	for (f=0; f<MAX_RIPPLES;f++)
+	{
+		r = &backEndData->ripples[f];
+		r->radius += 1-(pastrip)/160.0f;	// FIXME: this is currently wrong 
+		r->amp *= 1-(pastrip)/130.0f;		// as i only developed this on com_maxfps 144
+		if (r->amp <= 0.0004f){ r->amp =0; r_numripples--; }	// kill it if we don't amp much.
+
+	}
+	riptime = tr.refdef.time + 4;
+}
+
 
 /*
 @@@@@@@@@@@@@@@@@@@@@
@@ -388,6 +483,10 @@ void RE_RenderScene( const refdef_t *fd ) {
 	tr.refdef.numPolys = r_numpolys - r_firstScenePoly;
 	tr.refdef.polys = &backEndData->polys[r_firstScenePoly];
 
+	tr.refdef.num_ripple = r_numripples - r_firstSceneRipple;
+	tr.refdef.ripple = &backEndData->ripples[r_firstSceneRipple];
+
+
 	// turn off dynamic lighting globally by clearing all the
 	// dlights if it needs to be disabled or if vertex lighting is enabled
 	if ( r_dynamiclight->integer == 0 // ||
@@ -460,6 +559,8 @@ void RE_RenderScene( const refdef_t *fd ) {
 
 	VectorCopy( fd->vieworg, parms.pvsOrigin );
 
+	RE_ManageRipples();
+
 	R_RenderView( &parms );
 
 	// the next scene rendered in this frame will tack on after this one
@@ -467,6 +568,6 @@ void RE_RenderScene( const refdef_t *fd ) {
 	r_firstSceneEntity = r_numentities;
 	r_firstSceneDlight = r_numdlights;
 	r_firstScenePoly = r_numpolys;
-
+	r_firstSceneRipple = r_numripples;
 	tr.frontEndMsec += ri.Milliseconds() - startTime;
 }

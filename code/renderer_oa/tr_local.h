@@ -208,6 +208,11 @@ typedef enum {
 	DEFORM_TEXT5,
 	DEFORM_TEXT6,
 	DEFORM_TEXT7,
+	DEFORM_RIPPLE,
+	DEFORM_AUTOSPRITE3,
+	DEFORM_CULL,
+	DEFORM_GLOW,
+	DEFORM_TESS,
 	DEFORM_LFX
 } deform_t;
 
@@ -316,7 +321,12 @@ typedef enum {
 	TMOD_LIGHTSCALE,		// leilei - cel hack
 	TMOD_ATLAS,			// leilei - atlases
 	TMOD_ROTATE,
-	TMOD_ENTITY_TRANSLATE
+	TMOD_ENTITY_TRANSLATE,
+	TMOD_PRETURB_BUMP,		// leilei - new texture mods
+	TMOD_OFFSET,
+	TMOD_WAVES,
+	TMOD_WAVET,
+	TMOD_PARALLAX
 } texMod_t;
 
 // leilei - rgbMod - color modulations
@@ -330,7 +340,7 @@ typedef enum {
 	CMOD_OPAQUE
 } colorMod_t;
 
-#define	MAX_SHADER_DEFORMS	3
+#define	MAX_SHADER_DEFORMS	6 // leilei - was 3
 typedef struct {
 	deform_t	deformation;			// vertex coordinate modification type
 
@@ -509,6 +519,8 @@ typedef struct shader_s {
 	int		hasDetail;	// shader has a detail stage
 	int		hasDepthWrite;	// shader has a depthwrite stage (detailing around holes)
 	int		hasMaterial;	// shader represents this material
+	int		flareType;	// what kind of flare we'll use 
+	float		flareSize;	// how big is it
 
 	int			numDeforms;
 	deformStage_t	deforms[MAX_SHADER_DEFORMS];
@@ -538,6 +550,24 @@ typedef struct shader_s {
 #define		SHADMAT_EARTH	 	6	// unused
 #define		SHADMAT_CONCRETE	7 	// unused? redundant?
 #define		SHADMAT_ICE		8	// from slick
+
+// leilei - ripple
+#define	MAX_RIPPLES		32 // ripple verts will go through all of them, so we cant have too many to check
+typedef struct ripple_s {
+	vec3_t	origin;
+	float	radius;
+	float	radiusLp;
+	float	time;
+	float	life;
+	float	decay;				// leilei - will clean this
+	float	amp;				// changed by time
+	float	ampLp;
+	float   timeStart;
+	float   timeEnd;
+	float   ogRadius;			// doesnt change from creation
+	float   ogAmp;				// ditto
+} ripple_t;
+
 
 // trRefdef_t holds everything that comes in refdef_t,
 // as well as the locally generated scene information
@@ -572,6 +602,10 @@ typedef struct {
 
 	int			numDrawSurfs;
 	struct drawSurf_s	*drawSurfs;
+
+	int			num_ripple;
+	struct ripple_s	*ripple;
+	int			enableRipples;
 
 } trRefdef_t;
 
@@ -1221,6 +1255,7 @@ typedef struct {
 
 	shader_t				*flareShader;
 	shader_t				*flareShaderAtlas;	// leilei - lens reflections
+	shader_t				*flareShaderJake;	// leilei - lens reflections (deng style)
 	shader_t				*sunShader;
 	char					*sunShaderCustom; 	// leilei - sunShader override
 
@@ -1319,6 +1354,14 @@ typedef struct {
 
 	image_t					*transRights;	// leilei
 
+								// leilei - fallback textures for new renderer effects
+	image_t					*lfx_particle;	
+	image_t					*lfx_particle_add;	
+	image_t					*lfx_smoke;	
+	image_t					*lfx_smoke_add;	
+	image_t					*lfx_shock;
+	image_t					*lfx_shock_add;
+	image_t					*flare_jake;		
 } trGlobals_t;
 
 extern backEndState_t	backEnd;
@@ -1466,6 +1509,7 @@ extern cvar_t	*r_suggestiveThemes;	// Leilei - mature content
 extern cvar_t	*r_leidebug;	// Leilei - debug only!
 extern cvar_t	*r_leidebugeye;	// Leilei - debug only!
 extern cvar_t	*r_particles;	// Leilei - particles!
+extern cvar_t	*r_particlesTex;// Leilei - particles!
 #ifdef BROKEN_MDRPHYS
 extern cvar_t	*r_mdrPhysics;	// Leilei - MDR Physics
 #endif
@@ -1474,6 +1518,7 @@ extern	cvar_t	*r_iconmip;	// leilei - icon mip - picmip for 2d icons
 extern	cvar_t	*r_iconBits;	// leilei - icon color depth for 2d icons
 
 extern cvar_t	*r_lerpbias;	// Leilei - lerping bias
+extern cvar_t	*r_ripples;	// Leilei - ripples
 
 extern	cvar_t	*r_lightmapBits;	// leilei - lightmap color depth
 extern	cvar_t	*r_lightmapColorNorm;	// leilei - lightmap color normalize
@@ -2123,7 +2168,8 @@ void RE_AddPolyToScene( qhandle_t hShader , int numVerts, const polyVert_t *vert
 void RE_AddLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void RE_AddAdditiveLightToScene( const vec3_t org, float intensity, float r, float g, float b );
 void RE_RenderScene( const refdef_t *fd );
-
+void RE_AddRippleToScene( const vec3_t org, float intensity ); // leilei - ripples
+void RE_ManageRipples( void ); // leilei - ripples
 /*
 =============================================================
 
@@ -2345,6 +2391,7 @@ typedef struct {
 	trRefEntity_t	entities[MAX_REFENTITIES];
 	srfPoly_t	*polys;//[MAX_POLYS];
 	polyVert_t	*polyVerts;//[MAX_POLYVERTS];
+	ripple_t	ripples[MAX_RIPPLES];
 	renderCommandList_t	commands;
 } backEndData_t;
 
@@ -2386,7 +2433,7 @@ void R_AltBrightnessInit( void );
 extern int softwaremode;
 extern int leifxmode;
 extern int voodootype; // 0 - none 1 - Voodoo Graphics 2 - Voodoo2, 3 - Voodoo Banshee/3, 4 - Voodoo4/5
-
+//extern int threedtype; // 0 - none 1 - no alpha modulation (rage) 2 - no blending functions (powervr1, mystique) 3 - no alphamod nor blending (virge)
 void R_AddParticles (void);
 void R_RenderParticles (void);
 void R_ClearParticles (void);
@@ -2403,6 +2450,8 @@ void R_LFX_Blood (const vec3_t org, const vec3_t dir, float pressure) ;
 void LFX_ShaderInit(void);
 void LFX_ParticleEffect (int effect, const vec3_t org, const vec3_t dir);
 void RE_GetViewPosition(vec3_t point);
+
+
 
 #endif //TR_LOCAL_H
 

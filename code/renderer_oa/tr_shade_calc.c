@@ -166,6 +166,7 @@ void RB_CalcDeformVertexes( deformStage_t *ds )
 	}
 }
 
+
 /*
 =========================
 RB_CalcDeformNormals
@@ -179,26 +180,74 @@ void RB_CalcDeformNormals( deformStage_t *ds ) {
 	float	*xyz = ( float * ) tess.xyz;
 	float	*normal = ( float * ) tess.normal;
 
-	for ( i = 0; i < tess.numVertexes; i++, xyz += 4, normal += 4 ) {
-		scale = 0.98f;
-		scale = R_NoiseGet4f( xyz[0] * scale, xyz[1] * scale, xyz[2] * scale,
-			tess.shaderTime * ds->deformationWave.frequency );
-		normal[ 0 ] += ds->deformationWave.amplitude * scale;
+	// leilei - override modes for other purposes...
+	//	no normal normal shaders should really use these numbers
+	// Scale the normal by frequency (making things flatter or more pronounced)
+	if ( ds->deformationWave.amplitude == 666 )
+		{
+			// modulate the normal by the second value
 
-		scale = 0.98f;
-		scale = R_NoiseGet4f( 100 + xyz[0] * scale, xyz[1] * scale, xyz[2] * scale,
-			tess.shaderTime * ds->deformationWave.frequency );
-		normal[ 1 ] += ds->deformationWave.amplitude * scale;
+			scale = ds->deformationWave.frequency;
+		
+			for ( i = 0; i < tess.numVertexes; i++, xyz += 4, normal += 4 ) {
+				normal[ 0 ] *= scale;
+				normal[ 1 ] *= scale;
+				normal[ 2 ] *= scale;
+			}
+		}
+	// modulate normals by dot product
+	else if ( ds->deformationWave.amplitude == 1138 )
+		{	
 
-		scale = 0.98f;
-		scale = R_NoiseGet4f( 200 + xyz[0] * scale, xyz[1] * scale, xyz[2] * scale,
-			tess.shaderTime * ds->deformationWave.frequency );
-		normal[ 2 ] += ds->deformationWave.amplitude * scale;
+			scale = ds->deformationWave.frequency;
+		
+			for ( i = 0; i < tess.numVertexes; i++, xyz += 4, normal += 4 ) {
+			float doot = DotProduct(normal,xyz);
 
-		VectorNormalizeFast( normal );
-	}
-}
+				VectorScale(normal,doot,normal);
+				VectorNormalizeFast( normal );
 
+			}
+		}
+	// Recalculate the normals FIXME: actually do it properly. This is broken 
+	else if ( ds->deformationWave.amplitude == 1337 )
+		{
+			scale = ds->deformationWave.frequency;
+		
+			for ( i = 0; i < tess.numIndexes; i++, xyz += 4, normal += 4 ) {
+			
+				normal[ 0 ] = (xyz[0-4] * xyz[2]) - (xyz[2-4] * xyz[0]) ;
+				normal[ 1 ] = (xyz[2-4] * xyz[0]) - (xyz[0-4] * xyz[2]) ;
+				normal[ 2 ] = (xyz[0-4] * xyz[1]) - (xyz[1-4] * xyz[0]) ;
+				VectorNormalizeFast( normal );
+
+				normal[ 0 ] *= scale;
+				normal[ 1 ] *= scale;
+				normal[ 2 ] *= scale;
+
+			}
+		}
+	else	// normal q3 normal twiddling operation
+	{
+		for ( i = 0; i < tess.numVertexes; i++, xyz += 4, normal += 4 ) {
+			scale = 0.98f;
+			scale = R_NoiseGet4f( xyz[0] * scale, xyz[1] * scale, xyz[2] * scale,
+				tess.shaderTime * ds->deformationWave.frequency );
+			normal[ 0 ] += ds->deformationWave.amplitude * scale;
+	
+			scale = 0.98f;
+			scale = R_NoiseGet4f( 100 + xyz[0] * scale, xyz[1] * scale, xyz[2] * scale,
+				tess.shaderTime * ds->deformationWave.frequency );
+			normal[ 1 ] += ds->deformationWave.amplitude * scale;
+	
+			scale = 0.98f;
+			scale = R_NoiseGet4f( 200 + xyz[0] * scale, xyz[1] * scale, xyz[2] * scale,
+				tess.shaderTime * ds->deformationWave.frequency );
+			normal[ 2 ] += ds->deformationWave.amplitude * scale;
+	
+			VectorNormalizeFast( normal );
+		}
+	}}
 
 void RB_CalcDeformNormalsEvenMore( deformStage_t *ds ) {
 	int i;
@@ -400,6 +449,66 @@ void DeformText( const char *text ) {
 		VectorMA( origin, -2, width, origin );
 	}
 }
+
+
+/*
+========================
+RB_CalcRippleVertexes
+
+leilei - intended for water surfaces, imitates liquid movement
+========================
+*/
+void RB_CalcRippleVertexes( deformStage_t *ds )
+{
+	int i;
+	vec3_t	offset;
+	float	scale;
+	float	*xyz = ( float * ) tess.xyz;
+	float	*normal = ( float * ) tess.normal;
+
+	int f;
+	vec3_t cv;
+	float	*v;
+	v = tess.xyz[0];
+
+	if ( !r_ripples->value ) return;
+
+	{
+		scale = 1;
+
+		for ( i = 0; i < tess.numVertexes; i++, xyz += 4, normal += 4 )
+		{
+			offset[0] = 0;
+			offset[1] = 0;
+			offset[2] = 0;
+
+			for (f=0 ; f<MAX_RIPPLES ; f++) 
+			{
+
+				ripple_t *l;
+				l = &backEnd.refdef.ripple[f];
+				{
+					float clAmp = l->amp - 0.05f;
+					if (clAmp<0.01f) clAmp=0;
+					// calc the ripple origin against the world verts
+					VectorSubtract( l->origin, xyz, cv );
+					float vl = VectorLength( cv );
+					if (vl >= l->radius) clAmp = 0;
+					if (!clAmp) continue;
+					float power = 1 * ( l->radius );
+					float d = VectorNormalize( cv );
+					power = power / ( d ); // Wrong?
+					offset[2] += clAmp * (sin(power));
+				}
+			}
+
+			xyz[2] += offset[2]; // Add the ripple on the vert positions TODO: modulate from normals?
+
+		}
+	}
+}
+
+
 
 /*
 ==================
@@ -603,6 +712,95 @@ static void Autosprite2Deform( void ) {
 }
 
 
+
+/*
+=====================
+Autosprite3Deform
+
+Autosprite but all the sprites appear where normals go
+=====================
+*/
+
+static void Autosprite3Deform( void ) {
+	int		i, v;
+	int		oldVerts, oldIndexes;
+	float	*xyz;
+	vec3_t	mid, delta;
+	float	radius;
+	vec3_t	left, up;
+	vec3_t	temp;
+	vec3_t	leftDir, upDir;
+
+	oldVerts = tess.numVertexes;
+	oldIndexes = tess.numIndexes;
+	tess.numVertexes = 0;
+	tess.numIndexes = 0;
+
+	if ( backEnd.currentEntity != &tr.worldEntity ) {
+		GlobalVectorToLocal( backEnd.viewParms.or.axis[1], leftDir );
+		GlobalVectorToLocal( backEnd.viewParms.or.axis[2], upDir );
+	} else {
+		VectorCopy( backEnd.viewParms.or.axis[1], leftDir );
+		VectorCopy( backEnd.viewParms.or.axis[2], upDir );
+	}
+
+	temp[0] = temp[1] = temp[2] = 0;
+	for (i = 0 ; i < oldIndexes ; i+=3) {
+		v = i * 3;  
+		VectorCopy( tess.xyz[tess.indexes[i]], mid );
+		radius = 8;
+		VectorScale( leftDir, radius, left );
+		VectorScale( upDir, radius, up );
+		RB_AddQuadStamp( mid, left, up, tess.vertexColors[i] );
+	}
+	
+}
+
+
+/*
+=====================
+TessDeform
+
+Makes new subdivided triangle surfaces
+NOT YET DONE
+=====================
+*/
+/*
+static void TessDeform( void ) {
+	int		i;
+	int		oldVerts, oldInts;
+	float	*xyz;
+	float	*normal = ( float * ) tess.normal;
+	vec3_t	mid, delta;
+	float	radius;
+	vec3_t	left, up;
+	vec3_t	leftDir, upDir;
+	int ind=0;
+	vec3_t  a,b,c;
+	vec3_t  x,y,z;
+
+	oldVerts = tess.numVertexes;
+	oldInts = tess.numIndexes;
+	tess.numVertexes = 0;
+	tess.numIndexes = 0;
+	// TODO: Create 4 triangles per old triangle, where each triangle is
+	// connected to a midpoint of a new smoothed edge
+//         b                          b
+//        /\                         / \                                                            
+//       /  \                       /   \                                                           
+//      /    \       -------->    y/-----\z                                                         
+//     /      \                   /  \ /  \                                                         
+//   a/________\c               a/____V____\c                                 
+//                                    x
+//
+ 
+
+
+
+}
+
+*/
+
 /*
 =====================
 RB_DeformTessGeometry
@@ -640,6 +838,12 @@ void RB_DeformTessGeometry( void ) {
 			case DEFORM_AUTOSPRITE2:
 				Autosprite2Deform();
 				break;
+			case DEFORM_AUTOSPRITE3:
+				Autosprite3Deform();
+				break;
+	//		case DEFORM_TESS:
+	//			TessDeform();
+	//			break;
 			case DEFORM_TEXT0:
 			case DEFORM_TEXT1:
 			case DEFORM_TEXT2:
@@ -649,6 +853,9 @@ void RB_DeformTessGeometry( void ) {
 			case DEFORM_TEXT6:
 			case DEFORM_TEXT7:
 				DeformText( backEnd.refdef.text[ds->deformation - DEFORM_TEXT0] );
+				break;
+			case DEFORM_RIPPLE:
+				RB_CalcRippleVertexes( ds );
 				break;
 			default:
 				break;
@@ -1794,6 +2001,9 @@ static void RB_CalcDiffuseColor_scalar( unsigned char *colors )
 	}
 }
 
+
+
+
 extern float ProjectRadius( float r, vec3_t location );
 void RB_CalcDiffuseColor( unsigned char *colors )
 {
@@ -1810,6 +2020,16 @@ void RB_CalcDiffuseColor( unsigned char *colors )
 	{
 		RB_CalcDiffuseColor_flat( colors );
 	}
+/*
+	else if (r_shadeMethod->integer == -3)			// Faster?
+	{
+		RB_CalcDiffuseColor_quicker( colors );
+	}
+	else if (r_shadeMethod->integer == -4)			// Fasterer?
+	{
+		RB_CalcDiffuseColor_quickerer( colors );
+	}
+*/
 	else if (r_shadeMethod->integer == 2)			// mimic UE1 style
 	{
 		RB_CalcMaterials( colors, 0xFFFFFF, 0x000000, 0xFFFFFF, 0x000000, 128, 255 );

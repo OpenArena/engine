@@ -3101,9 +3101,6 @@ void CL_ShutdownRef( void ) {
 #endif
 }
 
-
-extern int vresWidth;
-extern int vresHeight;
 /*
 ============
 CL_InitRenderer
