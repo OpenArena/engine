@@ -326,6 +326,7 @@ typedef enum {
 	TMOD_OFFSET,
 	TMOD_WAVES,
 	TMOD_WAVET,
+	TMOD_WAVER,
 	TMOD_PARALLAX
 } texMod_t;
 
@@ -2260,6 +2261,9 @@ void 	RB_CalcUVColor( unsigned char *colors, int glowcol, int fx ); 	// leilei -
 void 	RB_CalcNormalizeToAlpha( unsigned char *colors); 		// leilei - rgbMod 
 void	RB_CalcDiffuseColor( unsigned char *colors );
 void    RB_CalcMaterials( unsigned char *colors, int ambient, int diffuse, int specular, int emissive, int spechard, int alpha ); // leilei - materials
+void	RB_CalcWaveCoords( const waveForm_t *wf, float *texCoords, int x, int y ); // leilei - waves wavet 
+void	RB_CalcWaveRotateCoords( const waveForm_t *wf, float *texCoords); 			// leilei - waver
+void	RB_CalcOffsetTexCoords( const float scroll[2], float *dstTexCoords );
 
 void	RB_CalcVertLights( unsigned char *colors );	// leilei - dynamic vertex lights
 

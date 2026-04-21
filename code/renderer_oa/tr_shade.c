@@ -1245,6 +1245,26 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 										( float * ) tess.svars.texcoords[b] );
 				break;
 
+			case TMOD_WAVES:
+				RB_CalcWaveCoords( &pStage->bundle[b].texMods[tm].wave, 
+						               ( float * ) tess.svars.texcoords[b], 1, 0 );
+				break;
+
+			case TMOD_WAVET:
+				RB_CalcWaveCoords( &pStage->bundle[b].texMods[tm].wave, 
+						               ( float * ) tess.svars.texcoords[b], 0, 1 );
+				break;
+			case TMOD_WAVER:
+				RB_CalcWaveRotateCoords( &pStage->bundle[b].texMods[tm].wave, 
+						               ( float * ) tess.svars.texcoords[b]);
+				break;
+			case TMOD_OFFSET:
+				RB_CalcOffsetTexCoords( pStage->bundle[b].texMods[tm].scroll,
+										 ( float * ) tess.svars.texcoords[b] );
+				break;
+			case TMOD_PARALLAX:
+				break;
+
 			default:
 				ri.Error( ERR_DROP, "ERROR: unknown texmod '%d' in shader '%s'", pStage->bundle[b].texMods[tm].type, tess.shader->name );
 				break;

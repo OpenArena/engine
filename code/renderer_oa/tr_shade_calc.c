@@ -109,6 +109,57 @@ void RB_CalcStretchTexCoords( const waveForm_t *wf, float *st )
 }
 
 /*
+** leilei - RB_CalcWaveCoords - simply transform using waves. uber-inspired
+*/
+void RB_CalcWaveCoords( const waveForm_t *wf, float *st, int x, int y )
+{
+	float p;
+	texModInfo_t tmi;
+
+	p = EvalWaveForm( wf ) * 0.5f;
+
+	tmi.matrix[0][0] = 1;
+	tmi.matrix[1][0] = 0;
+	tmi.translate[0] = (0.5f*x) +(p * x);
+
+	tmi.matrix[0][1] = 0;
+	tmi.matrix[1][1] = 1;
+	tmi.translate[1] = (0.5f*y) + (p * y);
+
+	RB_CalcTransformTexCoords( &tmi, st );
+}
+
+/*
+** leilei - RB_CalcWaveRotateCoords - rotate using waves. max inspired
+*/
+void RB_CalcWaveRotateCoords( const waveForm_t *wf, float *st )
+{
+	float p;
+	texModInfo_t tmi;
+	int index;
+	float sinValue, cosValue;
+
+	p = EvalWaveForm( wf ) * 0.5f;
+
+	index = p * ( FUNCTABLE_SIZE / 360.0f );
+
+	sinValue = tr.sinTable[ index & FUNCTABLE_MASK ];
+	cosValue = tr.sinTable[ ( index + FUNCTABLE_SIZE / 4 ) & FUNCTABLE_MASK ];
+
+	tmi.matrix[0][0] = cosValue;
+	tmi.matrix[1][0] = -sinValue;
+	tmi.translate[0] = 0.5 - 0.5 * cosValue + 0.5 * sinValue;
+
+	tmi.matrix[0][1] = sinValue;
+	tmi.matrix[1][1] = cosValue;
+	tmi.translate[1] = 0.5 - 0.5 * sinValue - 0.5 * cosValue;
+
+	RB_CalcTransformTexCoords( &tmi, st );
+
+}
+
+
+/*
 ====================================================================
 
 DEFORMATIONS
@@ -462,20 +513,14 @@ void RB_CalcRippleVertexes( deformStage_t *ds )
 {
 	int i;
 	vec3_t	offset;
-	float	scale;
 	float	*xyz = ( float * ) tess.xyz;
 	float	*normal = ( float * ) tess.normal;
 
 	int f;
 	vec3_t cv;
-	float	*v;
-	v = tess.xyz[0];
 
 	if ( !r_ripples->value ) return;
-
 	{
-		scale = 1;
-
 		for ( i = 0; i < tess.numVertexes; i++, xyz += 4, normal += 4 )
 		{
 			offset[0] = 0;
@@ -503,7 +548,6 @@ void RB_CalcRippleVertexes( deformStage_t *ds )
 			}
 
 			xyz[2] += offset[2]; // Add the ripple on the vert positions TODO: modulate from normals?
-
 		}
 	}
 }
@@ -1474,6 +1518,19 @@ void RB_CalcRotateTexCoords( float degsPerSecond, float *st )
 	RB_CalcTransformTexCoords( &tmi, st );
 }
 
+/*
+** leilei - RB_CalcOffsetTexCoords
+	scrolling without actually scrolling
+*/
+void RB_CalcOffsetTexCoords( const float scrollSpeed[2], float *st )
+{
+	int i;
+	for ( i = 0; i < tess.numVertexes; i++, st += 2 )
+	{
+		st[0] += scrollSpeed[0];
+		st[1] += scrollSpeed[1];
+	}
+}
 
 
 

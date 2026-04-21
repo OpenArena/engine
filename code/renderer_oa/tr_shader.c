@@ -1256,6 +1256,170 @@ static void ParseTexMod( char *_text, shaderStage_t *stage )
 		tmi->type = TMOD_ROTATE;
 	}
 	//
+	// leilei - waves
+	//
+	else if ( !Q_stricmp( token, "waves" ) )
+	{
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waves parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.func = NameToGenFunc( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waves parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.base = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waves parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.amplitude = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waves parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.phase = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waves parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.frequency = atof( token );
+		
+		tmi->type = TMOD_WAVES;
+	}
+	//
+	// leilei - wavet
+	//
+	else if ( !Q_stricmp( token, "wavet" ) )
+	{
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing wavet parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.func = NameToGenFunc( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing wavet parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.base = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing wavet parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.amplitude = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing wavet parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.phase = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing wavet parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.frequency = atof( token );
+		
+		tmi->type = TMOD_WAVET;
+	}
+	//
+	// leilei - waver
+	//
+	else if ( !Q_stricmp( token, "waver" ) )
+	{
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waver parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.func = NameToGenFunc( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waver parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.base = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waver parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.amplitude = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waver parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.phase = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing waver parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->wave.frequency = atof( token );
+		
+		tmi->type = TMOD_WAVER;
+	}
+
+	//
+	// leilei - offset
+	//
+	else if ( !Q_stricmp( token, "offset" ) )
+	{
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing offset parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->scroll[0] = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing offset parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->scroll[1] = atof( token );
+		tmi->type = TMOD_OFFSET;
+	}
+	//
 	// entityTranslate
 	//
 	else if ( !Q_stricmp( token, "entityTranslate" ) )
