@@ -95,10 +95,29 @@ void GLimp_Shutdown( void )
 {
 	ri.IN_Shutdown();
 
-	SDL_QuitSubSystem( SDL_INIT_VIDEO );
-#if SDL_MAJOR_VERSION != 2
+#if SDL_MAJOR_VERSION == 2
+	// vid_restart tears the renderer down and brings it back up without
+	// ever destroying the window/context through GLimp_SetMode (which only
+	// does so when it is about to create a *new* one). If we quit the video
+	// subsystem while SDL_window / SDL_glContext still point at live objects,
+	// those objects leak on every vid_restart and the process eventually
+	// runs out of memory. Free them here so Shutdown is symmetric with Init.
+	if( SDL_glContext != NULL )
+	{
+		SDL_GL_DeleteContext( SDL_glContext );
+		SDL_glContext = NULL;
+	}
+
+	if( SDL_window != NULL )
+	{
+		SDL_DestroyWindow( SDL_window );
+		SDL_window = NULL;
+	}
+#else
 	screen = NULL;
 #endif
+
+	SDL_QuitSubSystem( SDL_INIT_VIDEO );
 }
 
 /*
