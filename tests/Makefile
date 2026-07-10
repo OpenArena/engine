@@ -22,7 +22,8 @@ ENGINE   := code/qcommon
 STUBS    := $(TEST_DIR)/test_stubs.c $(TEST_DIR)/test_main.c $(TEST_DIR)/oa_test_run.c
 SUITES   := $(TEST_DIR)/tests_qshared.c $(TEST_DIR)/tests_qparse.c \
             $(TEST_DIR)/tests_qmath.c $(TEST_DIR)/tests_qinfo.c \
-            $(TEST_DIR)/tests_qstr.c $(TEST_DIR)/tests_qmatrix.c
+            $(TEST_DIR)/tests_qstr.c $(TEST_DIR)/tests_qmatrix.c \
+            $(TEST_DIR)/tests_qtoken.c
 ENG_SRC  := $(ENGINE)/q_shared.c $(ENGINE)/q_math.c
 
 TARGET      := $(TEST_DIR)/test_all
