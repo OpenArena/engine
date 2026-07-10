@@ -1,0 +1,3 @@
+# Built test binaries (produced by `make -f tests/Makefile`)
+tests/test_all
+tests/test_overflow
