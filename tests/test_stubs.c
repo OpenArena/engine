@@ -46,3 +46,7 @@ void QDECL FS_FreeFile(void *buffer)
 {
 	(void)buffer;
 }
+
+/* msg.c references this client CVar inside MSG_ReadDeltaEntity (which our
+ * tests do not exercise); provide a definition so the TU links. */
+int cl_shownet = 0;
