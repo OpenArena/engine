@@ -26,7 +26,7 @@ SUITES   := $(TEST_DIR)/tests_qshared.c $(TEST_DIR)/tests_qparse.c \
             $(TEST_DIR)/tests_qtoken.c $(TEST_DIR)/tests_qchar.c \
             $(TEST_DIR)/tests_qhuffman.c $(TEST_DIR)/tests_qmsg.c \
             $(TEST_DIR)/tests_qformat.c $(TEST_DIR)/tests_qmath2.c \
-            $(TEST_DIR)/tests_qmath3.c
+            $(TEST_DIR)/tests_qmath3.c $(TEST_DIR)/tests_qstring2.c
 
 ENG_SRC  := $(ENGINE)/q_shared.c $(ENGINE)/q_math.c \
             $(ENGINE)/huffman.c $(ENGINE)/msg.c
