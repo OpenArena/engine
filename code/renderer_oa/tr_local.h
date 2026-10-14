@@ -949,12 +949,11 @@ typedef struct {
 	vec3_t			v_LightDirection;
 
 	GLint			u_ModelViewMatrix;
-	mat4_t                  v_ModelViewMatrix;
-
 	GLint			u_ModelViewProjectionMatrix;
-	mat4_t                  v_ModelViewProjectionMatrix;
-
 	GLint			u_ProjectionMatrix;
+
+	mat4_t                  v_ModelViewMatrix;
+	mat4_t                  v_ModelViewProjectionMatrix;
 	mat4_t                  v_ProjectionMatrix;
 
 	GLint			u_TCGen0;
@@ -1126,11 +1125,11 @@ typedef struct {
 
 // the renderer front end should never modify glstate_t
 typedef struct {
-	int			currenttextures[2];
-	int			currenttmu;
 	mat4_t          currentModelViewMatrix;
 	mat4_t          currentModelViewProjectionMatrix;
 	mat4_t          currentProjectionMatrix;
+	int                     currenttextures[2];
+	int                     currenttmu;
 	qhandle_t	currentProgram;
 	qhandle_t	postprocessingProgram;
 	qboolean	finishCalled;
