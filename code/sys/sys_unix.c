@@ -150,7 +150,7 @@ static void CreateXDGPathAndMisc( void ) {
 		//Try to move the old home dir to the new location.
 		int errCode = rename(homeClassic, homeXdg);
 		if (errCode) {
-			Com_Printf("Failed to move \"%s\" to \"%s\". Error code: %d. Non fatal.", homeClassic, homeXdg, errCode);
+			Com_Printf("Failed to move \"%s\" to \"%s\". Error code: %d. Non fatal.\n", homeClassic, homeXdg, errCode);
 		}
 	}
 	if (!Sys_IsDir(homeXdg) && Sys_IsDir(homeClassic)) {
@@ -158,16 +158,16 @@ static void CreateXDGPathAndMisc( void ) {
 		//Link it istead
 		int errCode = symlink(homeClassic, homeXdg);
 		if (errCode) {
-			Com_Printf("Failed to create symbolic link \"%s\". Error code: %d. This is quite bad.", homeXdg, errCode);
+			Com_Printf("Failed to create symbolic link \"%s\". Error code: %d. This is quite bad.\n", homeXdg, errCode);
 		}
 	}
 	if (!Sys_Mkdir(homeXdg)) {
-		Com_Printf("Failed to create \"%s\". Error code: %d. This is quite bad.", homeXdg, errno);
+		Com_Printf("Failed to create \"%s\". Error code: %d. This is quite bad.\n", homeXdg, errno);
 	}
 	if (Sys_IsDir(homeXdg) && !Sys_IsDir(homeClassic)) {
 		int errCode = symlink(homeXdg, homeClassic);
 		if (errCode) {
-			Com_Printf("Failed to create symbolic link \"%s\". Error code: %d. This is quite bad.", homeClassic, errCode);
+			Com_Printf("Failed to create symbolic link \"%s\". Error code: %d. This is quite bad.\n", homeClassic, errCode);
 		}
 	}
 }
