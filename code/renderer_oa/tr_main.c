@@ -28,14 +28,14 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 trGlobals_t		tr;
 
-static float	s_flipMatrix[16] = {
+static mat4_t  s_flipMatrix = {{
 	// convert from our coordinate system (looking down X)
 	// to OpenGL's coordinate system (looking down -Z)
 	0, 0, -1, 0,
 	-1, 0, 0, 0,
 	0, 1, 0, 0,
 	0, 0, 0, 1
-};
+}};
 
 
 refimport_t	ri;
@@ -203,24 +203,24 @@ R_TransformModelToClip
 
 ==========================
 */
-void R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const float *projectionMatrix,
+void R_TransformModelToClip( const vec3_t src, const mat4_t *modelMatrix, const mat4_t *projectionMatrix,
 							vec4_t eye, vec4_t dst ) {
 	int i;
 
 	for ( i = 0 ; i < 4 ; i++ ) {
 		eye[i] = 
-			src[0] * modelMatrix[ i + 0 * 4 ] +
-			src[1] * modelMatrix[ i + 1 * 4 ] +
-			src[2] * modelMatrix[ i + 2 * 4 ] +
-			1 * modelMatrix[ i + 3 * 4 ];
+			src[0] * modelMatrix->d[ i + 0 * 4 ] +
+			src[1] * modelMatrix->d[ i + 1 * 4 ] +
+			src[2] * modelMatrix->d[ i + 2 * 4 ] +
+			1 * modelMatrix->d[ i + 3 * 4 ];
 	}
 
 	for ( i = 0 ; i < 4 ; i++ ) {
 		dst[i] = 
-			eye[0] * projectionMatrix[ i + 0 * 4 ] +
-			eye[1] * projectionMatrix[ i + 1 * 4 ] +
-			eye[2] * projectionMatrix[ i + 2 * 4 ] +
-			eye[3] * projectionMatrix[ i + 3 * 4 ];
+			eye[0] * projectionMatrix->d[ i + 0 * 4 ] +
+			eye[1] * projectionMatrix->d[ i + 1 * 4 ] +
+			eye[2] * projectionMatrix->d[ i + 2 * 4 ] +
+			eye[3] * projectionMatrix->d[ i + 3 * 4 ];
 	}
 }
 
@@ -250,16 +250,16 @@ myGlMultMatrix
 
 ==========================
 */
-void myGlMultMatrix( const float *a, const float *b, float *out ) {
+static void myGlMultMatrix( const mat4_t *a, const mat4_t *b, mat4_t *out ) {
 	int		i, j;
 
 	for ( i = 0 ; i < 4 ; i++ ) {
 		for ( j = 0 ; j < 4 ; j++ ) {
-			out[ i * 4 + j ] =
-				a [ i * 4 + 0 ] * b [ 0 * 4 + j ]
-				+ a [ i * 4 + 1 ] * b [ 1 * 4 + j ]
-				+ a [ i * 4 + 2 ] * b [ 2 * 4 + j ]
-				+ a [ i * 4 + 3 ] * b [ 3 * 4 + j ];
+			out->d[ i * 4 + j ] =
+				a->d [ i * 4 + 0 ] * b->d [ 0 * 4 + j ]
+				+ a->d [ i * 4 + 1 ] * b->d [ 1 * 4 + j ]
+				+ a->d [ i * 4 + 2 ] * b->d [ 2 * 4 + j ]
+				+ a->d [ i * 4 + 3 ] * b->d [ 3 * 4 + j ];
 		}
 	}
 }
@@ -275,7 +275,7 @@ Called by both the front end and the back end
 */
 void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms,
 					   orientationr_t *or ) {
-	float	glMatrix[16];
+	mat4_t  glMatrix;
 	vec3_t	delta;
 	float	axisLength;
 
@@ -290,27 +290,27 @@ void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms,
 	VectorCopy( ent->e.axis[1], or->axis[1] );
 	VectorCopy( ent->e.axis[2], or->axis[2] );
 
-	glMatrix[0] = or->axis[0][0];
-	glMatrix[4] = or->axis[1][0];
-	glMatrix[8] = or->axis[2][0];
-	glMatrix[12] = or->origin[0];
+	glMatrix.d[0] = or->axis[0][0];
+	glMatrix.d[4] = or->axis[1][0];
+	glMatrix.d[8] = or->axis[2][0];
+	glMatrix.d[12] = or->origin[0];
 
-	glMatrix[1] = or->axis[0][1];
-	glMatrix[5] = or->axis[1][1];
-	glMatrix[9] = or->axis[2][1];
-	glMatrix[13] = or->origin[1];
+	glMatrix.d[1] = or->axis[0][1];
+	glMatrix.d[5] = or->axis[1][1];
+	glMatrix.d[9] = or->axis[2][1];
+	glMatrix.d[13] = or->origin[1];
 
-	glMatrix[2] = or->axis[0][2];
-	glMatrix[6] = or->axis[1][2];
-	glMatrix[10] = or->axis[2][2];
-	glMatrix[14] = or->origin[2];
+	glMatrix.d[2] = or->axis[0][2];
+	glMatrix.d[6] = or->axis[1][2];
+	glMatrix.d[10] = or->axis[2][2];
+	glMatrix.d[14] = or->origin[2];
 
-	glMatrix[3] = 0;
-	glMatrix[7] = 0;
-	glMatrix[11] = 0;
-	glMatrix[15] = 1;
+	glMatrix.d[3] = 0;
+	glMatrix.d[7] = 0;
+	glMatrix.d[11] = 0;
+	glMatrix.d[15] = 1;
 
-	myGlMultMatrix( glMatrix, viewParms->world.modelMatrix, or->modelMatrix );
+	myGlMultMatrix( &glMatrix, &viewParms->world.modelMatrix, &or->modelMatrix );
 
 	// calculate the viewer origin in the model's space
 	// needed for fog, specular, and environment mapping
@@ -342,7 +342,7 @@ Sets up the modelview matrix for a given viewParm
 */
 void R_RotateForViewer (void) 
 {
-	float	viewerMatrix[16];
+	mat4_t  viewerMatrix;
 	vec3_t	origin;
 
 	Com_Memset (&tr.or, 0, sizeof(tr.or));
@@ -354,29 +354,29 @@ void R_RotateForViewer (void)
 	// transform by the camera placement
 	VectorCopy( tr.viewParms.or.origin, origin );
 
-	viewerMatrix[0] = tr.viewParms.or.axis[0][0];
-	viewerMatrix[4] = tr.viewParms.or.axis[0][1];
-	viewerMatrix[8] = tr.viewParms.or.axis[0][2];
-	viewerMatrix[12] = -origin[0] * viewerMatrix[0] + -origin[1] * viewerMatrix[4] + -origin[2] * viewerMatrix[8];
+	viewerMatrix.d[0] = tr.viewParms.or.axis[0][0];
+	viewerMatrix.d[4] = tr.viewParms.or.axis[0][1];
+	viewerMatrix.d[8] = tr.viewParms.or.axis[0][2];
+	viewerMatrix.d[12] = -origin[0] * viewerMatrix.d[0] + -origin[1] * viewerMatrix.d[4] + -origin[2] * viewerMatrix.d[8];
 
-	viewerMatrix[1] = tr.viewParms.or.axis[1][0];
-	viewerMatrix[5] = tr.viewParms.or.axis[1][1];
-	viewerMatrix[9] = tr.viewParms.or.axis[1][2];
-	viewerMatrix[13] = -origin[0] * viewerMatrix[1] + -origin[1] * viewerMatrix[5] + -origin[2] * viewerMatrix[9];
+	viewerMatrix.d[1] = tr.viewParms.or.axis[1][0];
+	viewerMatrix.d[5] = tr.viewParms.or.axis[1][1];
+	viewerMatrix.d[9] = tr.viewParms.or.axis[1][2];
+	viewerMatrix.d[13] = -origin[0] * viewerMatrix.d[1] + -origin[1] * viewerMatrix.d[5] + -origin[2] * viewerMatrix.d[9];
 
-	viewerMatrix[2] = tr.viewParms.or.axis[2][0];
-	viewerMatrix[6] = tr.viewParms.or.axis[2][1];
-	viewerMatrix[10] = tr.viewParms.or.axis[2][2];
-	viewerMatrix[14] = -origin[0] * viewerMatrix[2] + -origin[1] * viewerMatrix[6] + -origin[2] * viewerMatrix[10];
+	viewerMatrix.d[2] = tr.viewParms.or.axis[2][0];
+	viewerMatrix.d[6] = tr.viewParms.or.axis[2][1];
+	viewerMatrix.d[10] = tr.viewParms.or.axis[2][2];
+	viewerMatrix.d[14] = -origin[0] * viewerMatrix.d[2] + -origin[1] * viewerMatrix.d[6] + -origin[2] * viewerMatrix.d[10];
 
-	viewerMatrix[3] = 0;
-	viewerMatrix[7] = 0;
-	viewerMatrix[11] = 0;
-	viewerMatrix[15] = 1;
+	viewerMatrix.d[3] = 0;
+	viewerMatrix.d[7] = 0;
+	viewerMatrix.d[11] = 0;
+	viewerMatrix.d[15] = 1;
 
 	// convert from our coordinate system (looking down X)
 	// to OpenGL's coordinate system (looking down -Z)
-	myGlMultMatrix( viewerMatrix, s_flipMatrix, tr.or.modelMatrix );
+	myGlMultMatrix( &viewerMatrix, &s_flipMatrix, &tr.or.modelMatrix );
 
 	tr.viewParms.world = tr.or;
 
@@ -543,20 +543,20 @@ void R_SetupProjection(viewParms_t *dest, float zProj, qboolean computeFrustum)
 	width = xmax - xmin;
 	height = ymax - ymin;
 	
-	dest->projectionMatrix[0] = 2 * zProj / width;
-	dest->projectionMatrix[4] = 0;
-	dest->projectionMatrix[8] = (xmax + xmin + 2 * stereoSep) / width;
-	dest->projectionMatrix[12] = 2 * zProj * stereoSep / width;
+	dest->projectionMatrix.d[0] = 2 * zProj / width;
+	dest->projectionMatrix.d[4] = 0;
+	dest->projectionMatrix.d[8] = (xmax + xmin + 2 * stereoSep) / width;
+	dest->projectionMatrix.d[12] = 2 * zProj * stereoSep / width;
 
-	dest->projectionMatrix[1] = 0;
-	dest->projectionMatrix[5] = 2 * zProj / height;
-	dest->projectionMatrix[9] = ( ymax + ymin ) / height;	// normally 0
-	dest->projectionMatrix[13] = 0;
+	dest->projectionMatrix.d[1] = 0;
+	dest->projectionMatrix.d[5] = 2 * zProj / height;
+	dest->projectionMatrix.d[9] = ( ymax + ymin ) / height; // normally 0
+	dest->projectionMatrix.d[13] = 0;
 
-	dest->projectionMatrix[3] = 0;
-	dest->projectionMatrix[7] = 0;
-	dest->projectionMatrix[11] = -1;
-	dest->projectionMatrix[15] = 0;
+	dest->projectionMatrix.d[3] = 0;
+	dest->projectionMatrix.d[7] = 0;
+	dest->projectionMatrix.d[11] = -1;
+	dest->projectionMatrix.d[15] = 0;
 	
 	// Now that we have all the data for the projection matrix we can also setup the view frustum.
 	if(computeFrustum)
@@ -578,10 +578,10 @@ void R_SetupProjectionZ(viewParms_t *dest)
 	zFar	= dest->zFar;	
 	depth	= zFar - zNear;
 
-	dest->projectionMatrix[2] = 0;
-	dest->projectionMatrix[6] = 0;
-	dest->projectionMatrix[10] = -( zFar + zNear ) / depth;
-	dest->projectionMatrix[14] = -2 * zFar * zNear / depth;
+	dest->projectionMatrix.d[2] = 0;
+	dest->projectionMatrix.d[6] = 0;
+	dest->projectionMatrix.d[10] = -( zFar + zNear ) / depth;
+	dest->projectionMatrix.d[14] = -2 * zFar * zNear / depth;
 }
 
 /*
@@ -875,7 +875,7 @@ static qboolean SurfIsOffscreen( const drawSurf_t *drawSurf, vec4_t clipDest[128
 		int j;
 		unsigned int pointFlags = 0;
 
-		R_TransformModelToClip( tess.xyz[i], tr.or.modelMatrix, tr.viewParms.projectionMatrix, eye, clip );
+		R_TransformModelToClip( tess.xyz[i], &tr.or.modelMatrix, &tr.viewParms.projectionMatrix, eye, clip );
 
 		for ( j = 0; j < 3; j++ )
 		{

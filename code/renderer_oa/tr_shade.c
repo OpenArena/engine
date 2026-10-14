@@ -825,8 +825,8 @@ void RE_GetViewPosition(vec3_t point)
 {
 	vec4_t			eye, clip, normalized, window;
 	int i;
-	R_TransformModelToClip( point, backEnd.or.modelMatrix,
-	                        backEnd.viewParms.projectionMatrix, eye, clip );
+	R_TransformModelToClip( point, &backEnd.or.modelMatrix,
+				&backEnd.viewParms.projectionMatrix, eye, clip );
 
 	// check to see if the point is completely off screen
 	for ( i = 0 ; i < 3 ; i++ ) {
@@ -1313,15 +1313,15 @@ void GLSL_Feeder(shaderStage_t *pStage, shaderCommands_t *input)
 
 	/* model view matrix */
 	if (program->u_ModelViewMatrix > -1)
-		R_GLSL_SetUniform_ModelViewMatrix(program, glState.currentModelViewMatrix);
+		R_GLSL_SetUniform_ModelViewMatrix(program, &glState.currentModelViewMatrix);
 
 	/* model view projection matrix */
 	if (program->u_ModelViewProjectionMatrix > -1)
-		R_GLSL_SetUniform_ModelViewProjectionMatrix(program, glState.currentModelViewProjectionMatrix);
+		R_GLSL_SetUniform_ModelViewProjectionMatrix(program, &glState.currentModelViewProjectionMatrix);
 
 	/* projection matrix */
 	if (program->u_ProjectionMatrix > -1)
-		R_GLSL_SetUniform_ProjectionMatrix(program, glState.currentProjectionMatrix);
+		R_GLSL_SetUniform_ProjectionMatrix(program, &glState.currentProjectionMatrix);
 
 	/* texture coordinates 0 */
 	if (program->u_TCGen0 > -1)

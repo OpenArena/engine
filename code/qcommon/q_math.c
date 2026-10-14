@@ -902,12 +902,12 @@ int	PlaneTypeForNormal (vec3_t normal) {
 Matrix4Compare
 =================
 */
-qboolean Matrix4Compare(const float a[16], const float b[16])
+qboolean Matrix4Compare(const mat4_t *a, const mat4_t *b)
 {
 	int i;
 
 	for ( i = 0; i < 16; i++ )
-		if ( a[i] != b[i] )
+		if ( a->d[i] != b->d[i] )
 			return qfalse;
 
 	return qtrue;
@@ -918,7 +918,7 @@ qboolean Matrix4Compare(const float a[16], const float b[16])
 Matrix4Copy
 =================
 */
-void Matrix4Copy(const float in[16], float out[16])
+void Matrix4Copy(const mat4_t *in, mat4_t *out)
 {
 #if id386_sse && defined __GNUC__ && 0
 	asm volatile
@@ -963,10 +963,10 @@ void Matrix4Copy(const float in[16], float out[16])
 	: "memory"
 	);
 #else
-        out[ 0] = in[ 0];       out[ 4] = in[ 4];       out[ 8] = in[ 8];       out[12] = in[12];
-        out[ 1] = in[ 1];       out[ 5] = in[ 5];       out[ 9] = in[ 9];       out[13] = in[13];
-		out[ 2] = in[ 2];       out[ 6] = in[ 6];       out[10] = in[10];       out[14] = in[14];
-		out[ 3] = in[ 3];       out[ 7] = in[ 7];       out[11] = in[11];       out[15] = in[15];
+	out->d[ 0] = in->d[ 0];       out->d[ 4] = in->d[ 4];       out->d[ 8] = in->d[ 8];       out->d[12] = in->d[12];
+	out->d[ 1] = in->d[ 1];       out->d[ 5] = in->d[ 5];       out->d[ 9] = in->d[ 9];       out->d[13] = in->d[13];
+		out->d[ 2] = in->d[ 2];       out->d[ 6] = in->d[ 6];       out->d[10] = in->d[10];       out->d[14] = in->d[14];
+		out->d[ 3] = in->d[ 3];       out->d[ 7] = in->d[ 7];       out->d[11] = in->d[11];       out->d[15] = in->d[15];
 #endif
 }
 
@@ -975,7 +975,7 @@ void Matrix4Copy(const float in[16], float out[16])
 Matrix4Multiply
 =================
 */
-void Matrix4Multiply(const float a[16], const float b[16], float out[16])
+void Matrix4Multiply(const mat4_t *a, const mat4_t *b, mat4_t *out)
 {
 #if id386_sse
 	int				i;
@@ -1008,25 +1008,25 @@ void Matrix4Multiply(const float a[16], const float b[16], float out[16])
 	}
 
 #else
-        out[ 0] = b[ 0]*a[ 0] + b[ 1]*a[ 4] + b[ 2]*a[ 8] + b[ 3]*a[12];
-        out[ 1] = b[ 0]*a[ 1] + b[ 1]*a[ 5] + b[ 2]*a[ 9] + b[ 3]*a[13];
-		out[ 2] = b[ 0]*a[ 2] + b[ 1]*a[ 6] + b[ 2]*a[10] + b[ 3]*a[14];
-		out[ 3] = b[ 0]*a[ 3] + b[ 1]*a[ 7] + b[ 2]*a[11] + b[ 3]*a[15];
+	out->d[ 0] = b->d[ 0]*a->d[ 0] + b->d[ 1]*a->d[ 4] + b->d[ 2]*a->d[ 8] + b->d[ 3]*a->d[12];
+	out->d[ 1] = b->d[ 0]*a->d[ 1] + b->d[ 1]*a->d[ 5] + b->d[ 2]*a->d[ 9] + b->d[ 3]*a->d[13];
+		out->d[ 2] = b->d[ 0]*a->d[ 2] + b->d[ 1]*a->d[ 6] + b->d[ 2]*a->d[10] + b->d[ 3]*a->d[14];
+		out->d[ 3] = b->d[ 0]*a->d[ 3] + b->d[ 1]*a->d[ 7] + b->d[ 2]*a->d[11] + b->d[ 3]*a->d[15];
 
-		out[ 4] = b[ 4]*a[ 0] + b[ 5]*a[ 4] + b[ 6]*a[ 8] + b[ 7]*a[12];
-		out[ 5] = b[ 4]*a[ 1] + b[ 5]*a[ 5] + b[ 6]*a[ 9] + b[ 7]*a[13];
-		out[ 6] = b[ 4]*a[ 2] + b[ 5]*a[ 6] + b[ 6]*a[10] + b[ 7]*a[14];
-		out[ 7] = b[ 4]*a[ 3] + b[ 5]*a[ 7] + b[ 6]*a[11] + b[ 7]*a[15];
+		out->d[ 4] = b->d[ 4]*a->d[ 0] + b->d[ 5]*a->d[ 4] + b->d[ 6]*a->d[ 8] + b->d[ 7]*a->d[12];
+		out->d[ 5] = b->d[ 4]*a->d[ 1] + b->d[ 5]*a->d[ 5] + b->d[ 6]*a->d[ 9] + b->d[ 7]*a->d[13];
+		out->d[ 6] = b->d[ 4]*a->d[ 2] + b->d[ 5]*a->d[ 6] + b->d[ 6]*a->d[10] + b->d[ 7]*a->d[14];
+		out->d[ 7] = b->d[ 4]*a->d[ 3] + b->d[ 5]*a->d[ 7] + b->d[ 6]*a->d[11] + b->d[ 7]*a->d[15];
 
-		out[ 8] = b[ 8]*a[ 0] + b[ 9]*a[ 4] + b[10]*a[ 8] + b[11]*a[12];
-		out[ 9] = b[ 8]*a[ 1] + b[ 9]*a[ 5] + b[10]*a[ 9] + b[11]*a[13];
-		out[10] = b[ 8]*a[ 2] + b[ 9]*a[ 6] + b[10]*a[10] + b[11]*a[14];
-		out[11] = b[ 8]*a[ 3] + b[ 9]*a[ 7] + b[10]*a[11] + b[11]*a[15];
+		out->d[ 8] = b->d[ 8]*a->d[ 0] + b->d[ 9]*a->d[ 4] + b->d[10]*a->d[ 8] + b->d[11]*a->d[12];
+		out->d[ 9] = b->d[ 8]*a->d[ 1] + b->d[ 9]*a->d[ 5] + b->d[10]*a->d[ 9] + b->d[11]*a->d[13];
+		out->d[10] = b->d[ 8]*a->d[ 2] + b->d[ 9]*a->d[ 6] + b->d[10]*a->d[10] + b->d[11]*a->d[14];
+		out->d[11] = b->d[ 8]*a->d[ 3] + b->d[ 9]*a->d[ 7] + b->d[10]*a->d[11] + b->d[11]*a->d[15];
 
-		out[12] = b[12]*a[ 0] + b[13]*a[ 4] + b[14]*a[ 8] + b[15]*a[12];
-		out[13] = b[12]*a[ 1] + b[13]*a[ 5] + b[14]*a[ 9] + b[15]*a[13];
-		out[14] = b[12]*a[ 2] + b[13]*a[ 6] + b[14]*a[10] + b[15]*a[14];
-		out[15] = b[12]*a[ 3] + b[13]*a[ 7] + b[14]*a[11] + b[15]*a[15];
+		out->d[12] = b->d[12]*a->d[ 0] + b->d[13]*a->d[ 4] + b->d[14]*a->d[ 8] + b->d[15]*a->d[12];
+		out->d[13] = b->d[12]*a->d[ 1] + b->d[13]*a->d[ 5] + b->d[14]*a->d[ 9] + b->d[15]*a->d[13];
+		out->d[14] = b->d[12]*a->d[ 2] + b->d[13]*a->d[ 6] + b->d[14]*a->d[10] + b->d[15]*a->d[14];
+		out->d[15] = b->d[12]*a->d[ 3] + b->d[13]*a->d[ 7] + b->d[14]*a->d[11] + b->d[15]*a->d[15];
 #endif
 }
 

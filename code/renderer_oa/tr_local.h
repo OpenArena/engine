@@ -142,7 +142,7 @@ typedef struct {
 	vec3_t		origin;			// in world coordinates
 	vec3_t		axis[3];		// orientation in world
 	vec3_t		viewOrigin;		// viewParms->or.origin in local coordinates
-	float		modelMatrix[16];
+	mat4_t          modelMatrix;
 } orientationr_t;
 
 //===============================================================================
@@ -615,7 +615,7 @@ typedef struct {
 	cplane_t	portalPlane;		// clip anything behind this if mirroring
 	int			viewportX, viewportY, viewportWidth, viewportHeight;
 	float		fovX, fovY;
-	float		projectionMatrix[16];
+	mat4_t          projectionMatrix;
 	cplane_t	frustum[4];
 	vec3_t		visBounds[2];
 	float		zFar;
@@ -949,13 +949,13 @@ typedef struct {
 	vec3_t			v_LightDirection;
 
 	GLint			u_ModelViewMatrix;
-	float			v_ModelViewMatrix[16];
+	mat4_t                  v_ModelViewMatrix;
 
 	GLint			u_ModelViewProjectionMatrix;
-	float			v_ModelViewProjectionMatrix[16];
+	mat4_t                  v_ModelViewProjectionMatrix;
 
 	GLint			u_ProjectionMatrix;
-	float			v_ProjectionMatrix[16];
+	mat4_t                  v_ProjectionMatrix;
 
 	GLint			u_TCGen0;
 	texCoordGen_t	v_TCGen0;
@@ -1128,9 +1128,9 @@ typedef struct {
 typedef struct {
 	int			currenttextures[2];
 	int			currenttmu;
-	float		currentModelViewMatrix[16];
-	float		currentModelViewProjectionMatrix[16];
-	float		currentProjectionMatrix[16];
+	mat4_t          currentModelViewMatrix;
+	mat4_t          currentModelViewProjectionMatrix;
+	mat4_t          currentProjectionMatrix;
 	qhandle_t	currentProgram;
 	qhandle_t	postprocessingProgram;
 	qboolean	finishCalled;
@@ -1834,28 +1834,28 @@ static ID_INLINE void R_GLSL_SetUniform_LightDirection(glslProgram_t *program, c
 	qglUniform3fARB(program->u_LightDirection, value[0], value[1], value[2]);
 }
 
-static ID_INLINE void R_GLSL_SetUniform_ModelViewMatrix(glslProgram_t *program, const float value[16]) {
-	if (Matrix4Compare(program->v_ModelViewMatrix, value))
+static ID_INLINE void R_GLSL_SetUniform_ModelViewMatrix(glslProgram_t *program, const mat4_t *value) {
+	if (Matrix4Compare(&program->v_ModelViewMatrix, value))
 		return;
 
-	Matrix4Copy(value, program->v_ModelViewMatrix);
-	qglUniformMatrix4fvARB(program->u_ModelViewMatrix, 1, GL_FALSE, value);
+	Matrix4Copy(value, &program->v_ModelViewMatrix);
+	qglUniformMatrix4fvARB(program->u_ModelViewMatrix, 1, GL_FALSE, value->d);
 }
 
-static ID_INLINE void R_GLSL_SetUniform_ModelViewProjectionMatrix(glslProgram_t *program, const float value[16]) {
-	if (Matrix4Compare(program->v_ModelViewProjectionMatrix, value))
+static ID_INLINE void R_GLSL_SetUniform_ModelViewProjectionMatrix(glslProgram_t *program, const mat4_t *value) {
+	if (Matrix4Compare(&program->v_ModelViewProjectionMatrix, value))
 		return;
 
-	Matrix4Copy(value, program->v_ModelViewProjectionMatrix);
-	qglUniformMatrix4fvARB(program->u_ModelViewProjectionMatrix, 1, GL_FALSE, value);
+	Matrix4Copy(value, &program->v_ModelViewProjectionMatrix);
+	qglUniformMatrix4fvARB(program->u_ModelViewProjectionMatrix, 1, GL_FALSE, value->d);
 }
 
-static ID_INLINE void R_GLSL_SetUniform_ProjectionMatrix(glslProgram_t *program, const float value[16]) {
-	if (Matrix4Compare(program->v_ProjectionMatrix, value))
+static ID_INLINE void R_GLSL_SetUniform_ProjectionMatrix(glslProgram_t *program, const mat4_t *value) {
+	if (Matrix4Compare(&program->v_ProjectionMatrix, value))
 		return;
 
-	Matrix4Copy(value, program->v_ProjectionMatrix);
-	qglUniformMatrix4fvARB(program->u_ProjectionMatrix, 1, GL_FALSE, value);
+	Matrix4Copy(value, &program->v_ProjectionMatrix);
+	qglUniformMatrix4fvARB(program->u_ProjectionMatrix, 1, GL_FALSE, value->d);
 }
 
 static ID_INLINE void R_GLSL_SetUniform_TCGen0(glslProgram_t *program, texCoordGen_t value) {
@@ -2179,7 +2179,7 @@ void R_LoadTGA( const char *name, byte **pic, int *width, int *height );
 =============================================================
 =============================================================
 */
-void	R_TransformModelToClip( const vec3_t src, const float *modelMatrix, const float *projectionMatrix,
+void   R_TransformModelToClip( const vec3_t src, const mat4_t *modelMatrix, const mat4_t *projectionMatrix,
 							vec4_t eye, vec4_t dst );
 void	R_TransformClipToWindow( const vec4_t clip, const viewParms_t *view, vec4_t normalized, vec4_t window );
 

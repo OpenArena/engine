@@ -353,6 +353,14 @@ typedef vec_t vec3_t[3];
 typedef vec_t vec4_t[4];
 typedef vec_t vec5_t[5];
 
+typedef struct mat4_s {
+#ifdef Q3_VM
+	float d[16];
+#else
+	_Alignas(16) float d[16];
+#endif
+} mat4_t;
+
 typedef	int	fixed4_t;
 typedef	int	fixed8_t;
 typedef	int	fixed16_t;
@@ -705,9 +713,9 @@ void MakeNormalVectors( const vec3_t forward, vec3_t right, vec3_t up );
 // perpendicular vector could be replaced by this
 
 //int	PlaneTypeForNormal (vec3_t normal);
-qboolean Matrix4Compare(const float a[16], const float b[16]);
-void Matrix4Copy(const float in[16], float out[16]);
-void Matrix4Multiply(const float a[16], const float b[16], float out[16]);
+qboolean Matrix4Compare(const mat4_t *a, const mat4_t *b);
+void Matrix4Copy(const mat4_t *in, mat4_t *out);
+void Matrix4Multiply(const mat4_t *a, const mat4_t *b, mat4_t *out);
 
 void Q_MatrixMultiply(float in1[3][3], float in2[3][3], float out[3][3]);
 void AngleVectors( const vec3_t angles, vec3_t forward, vec3_t right, vec3_t up);

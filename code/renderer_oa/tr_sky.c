@@ -741,7 +741,7 @@ void RB_DrawSun( void ) {
 	if (backEnd.viewParms.isPortal) // leilei - do sun only not in the portal (keeps sun from disappearing when portal is onscreen)
 		return;
 
-	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix );
+	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix.d );
 	qglTranslatef (backEnd.viewParms.or.origin[0], backEnd.viewParms.or.origin[1], backEnd.viewParms.or.origin[2]);
 
 	dist = 	backEnd.viewParms.zFar / 1.75;		// div sqrt(3)

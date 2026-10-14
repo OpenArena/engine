@@ -181,8 +181,8 @@ void RB_AddFlare(srfFlare_t *surface, int fogNum, vec3_t point, vec3_t color, ve
 
 	flaredsize = backEnd.viewParms.viewportHeight;
 
-	R_TransformModelToClip( point, backEnd.or.modelMatrix,
-	                        backEnd.viewParms.projectionMatrix, eye, clip );
+	R_TransformModelToClip( point, &backEnd.or.modelMatrix,
+				&backEnd.viewParms.projectionMatrix, eye, clip );
 
 
 
@@ -398,8 +398,8 @@ static void RB_TestFlareFast( flare_t *f, int dotrace )
 		f->delay = backEnd.refdef.time + r_flareDelay->value;
 
 
-		screenZ = backEnd.viewParms.projectionMatrix[14] /
-		          ( ( 2*depth - 1 ) * backEnd.viewParms.projectionMatrix[11] - backEnd.viewParms.projectionMatrix[10] );
+		screenZ = backEnd.viewParms.projectionMatrix.d[14] /
+			  ( ( 2*depth - 1 ) * backEnd.viewParms.projectionMatrix.d[11] - backEnd.viewParms.projectionMatrix.d[10] );
 
 		visible = ( -f->eyeZ - -screenZ ) < 24;
 
@@ -485,8 +485,8 @@ static void RB_TestFlare( flare_t *f, int dotrace )
 	qglReadPixels( f->windowX, f->windowY, 1, 1, GL_DEPTH_COMPONENT, GL_FLOAT, &depth );
 
 
-	screenZ = backEnd.viewParms.projectionMatrix[14] /
-	          ( ( 2*depth - 1 ) * backEnd.viewParms.projectionMatrix[11] - backEnd.viewParms.projectionMatrix[10] );
+	screenZ = backEnd.viewParms.projectionMatrix.d[14] /
+		  ( ( 2*depth - 1 ) * backEnd.viewParms.projectionMatrix.d[11] - backEnd.viewParms.projectionMatrix.d[10] );
 
 	visible = ( -f->eyeZ - -screenZ ) < 24;
 
@@ -1355,7 +1355,7 @@ void RB_DrawSunFlare( void )
 	// but, if we don't want the sunflare (type is 0 - either on the r_drawSun 2 override or the shader) then we just forget it
 	if (fetype == 0) return;
 
-	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix );
+	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix.d );
 	qglTranslatef (backEnd.viewParms.or.origin[0], backEnd.viewParms.or.origin[1], backEnd.viewParms.or.origin[2]);
 
 	dist = 	backEnd.viewParms.zFar / 1.75;		// div sqrt(3)

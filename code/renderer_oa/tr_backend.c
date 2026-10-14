@@ -26,14 +26,14 @@ backEndState_t	backEnd;
 
 float ScreenFrameCount;
 
-static float	s_flipMatrix[16] = {
+static mat4_t  s_flipMatrix = {{
 	// convert from our coordinate system (looking down X)
 	// to OpenGL's coordinate system (looking down -Z)
 	0, 0, -1, 0,
 	-1, 0, 0, 0,
 	0, 1, 0, 0,
 	0, 0, 0, 1
-};
+}};
 
 
 /*
@@ -745,7 +745,7 @@ static void RB_Hyperspace( void ) {
 
 static void SetViewportAndScissor( void ) {
 	qglMatrixMode(GL_PROJECTION);
-	qglLoadMatrixf( backEnd.viewParms.projectionMatrix );
+	qglLoadMatrixf( backEnd.viewParms.projectionMatrix.d );
 	qglMatrixMode(GL_MODELVIEW);
 
 	// set the window clipping
@@ -753,8 +753,8 @@ static void SetViewportAndScissor( void ) {
 		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
 	qglScissor( backEnd.viewParms.viewportX, backEnd.viewParms.viewportY, 
 		backEnd.viewParms.viewportWidth, backEnd.viewParms.viewportHeight );
-	Matrix4Copy(backEnd.viewParms.projectionMatrix, glState.currentProjectionMatrix);
-	Matrix4Multiply(glState.currentProjectionMatrix, glState.currentModelViewMatrix, glState.currentModelViewProjectionMatrix);
+	Matrix4Copy(&backEnd.viewParms.projectionMatrix, &glState.currentProjectionMatrix);
+	Matrix4Multiply(&glState.currentProjectionMatrix, &glState.currentModelViewMatrix, &glState.currentModelViewProjectionMatrix);
 }
 
 /*
@@ -836,9 +836,9 @@ void RB_BeginDrawingView (void) {
 		plane2[2] = DotProduct (backEnd.viewParms.or.axis[2], plane);
 		plane2[3] = DotProduct (plane, backEnd.viewParms.or.origin) - plane[3];
 
-		qglLoadMatrixf( s_flipMatrix );
-		Matrix4Copy(s_flipMatrix, glState.currentModelViewMatrix);
-		Matrix4Multiply(glState.currentProjectionMatrix, glState.currentModelViewMatrix, glState.currentModelViewProjectionMatrix);
+		qglLoadMatrixf( s_flipMatrix.d );
+		Matrix4Copy(&s_flipMatrix, &glState.currentModelViewMatrix);
+		Matrix4Multiply(&glState.currentProjectionMatrix, &glState.currentModelViewMatrix, &glState.currentModelViewProjectionMatrix);
 		qglClipPlane (GL_CLIP_PLANE0, plane2);
 		qglEnable (GL_CLIP_PLANE0);
 	} else {
@@ -1032,10 +1032,10 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 				R_TransformDlights( backEnd.refdef.num_dlights, backEnd.refdef.dlights, &backEnd.or );
 			}
 
-			qglLoadMatrixf( backEnd.or.modelMatrix );
+			qglLoadMatrixf( backEnd.or.modelMatrix.d );
 
-			Matrix4Copy(backEnd.or.modelMatrix, glState.currentModelViewMatrix);
-			Matrix4Multiply(glState.currentProjectionMatrix, glState.currentModelViewMatrix, glState.currentModelViewProjectionMatrix);
+			Matrix4Copy(&backEnd.or.modelMatrix, &glState.currentModelViewMatrix);
+			Matrix4Multiply(&glState.currentProjectionMatrix, &glState.currentModelViewMatrix, &glState.currentModelViewProjectionMatrix);
 
 			//
 			// change depthrange. Also change projection matrix so first person weapon does not look like coming
@@ -1053,10 +1053,10 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 							{
 								// was not a crosshair but now is, change back proj matrix
 								qglMatrixMode(GL_PROJECTION);
-								qglLoadMatrixf(backEnd.viewParms.projectionMatrix);
+								qglLoadMatrixf(backEnd.viewParms.projectionMatrix.d);
 								qglMatrixMode(GL_MODELVIEW);
-								Matrix4Copy(backEnd.viewParms.projectionMatrix, glState.currentProjectionMatrix);
-								Matrix4Multiply(glState.currentProjectionMatrix, glState.currentModelViewMatrix, glState.currentModelViewProjectionMatrix);
+								Matrix4Copy(&backEnd.viewParms.projectionMatrix, &glState.currentProjectionMatrix);
+								Matrix4Multiply(&glState.currentProjectionMatrix, &glState.currentModelViewMatrix, &glState.currentModelViewProjectionMatrix);
 							}
 						}
 						else
@@ -1066,10 +1066,10 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 							R_SetupProjection(&temp, r_znear->value, qfalse);
 
 							qglMatrixMode(GL_PROJECTION);
-							qglLoadMatrixf(temp.projectionMatrix);
+							qglLoadMatrixf(temp.projectionMatrix.d);
 							qglMatrixMode(GL_MODELVIEW);
-							Matrix4Copy(temp.projectionMatrix, glState.currentProjectionMatrix);
-							Matrix4Multiply(glState.currentProjectionMatrix, glState.currentModelViewMatrix, glState.currentModelViewProjectionMatrix);
+							Matrix4Copy(&temp.projectionMatrix, &glState.currentProjectionMatrix);
+							Matrix4Multiply(&glState.currentProjectionMatrix, &glState.currentModelViewMatrix, &glState.currentModelViewProjectionMatrix);
 						}
 					}
 
@@ -1081,10 +1081,10 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 					if(!wasCrosshair && backEnd.viewParms.stereoFrame != STEREO_CENTER)
 					{
 						qglMatrixMode(GL_PROJECTION);
-						qglLoadMatrixf(backEnd.viewParms.projectionMatrix);
+						qglLoadMatrixf(backEnd.viewParms.projectionMatrix.d);
 						qglMatrixMode(GL_MODELVIEW);
-						Matrix4Copy(backEnd.viewParms.projectionMatrix, glState.currentProjectionMatrix);
-						Matrix4Multiply(glState.currentProjectionMatrix, glState.currentModelViewMatrix, glState.currentModelViewProjectionMatrix);
+						Matrix4Copy(&backEnd.viewParms.projectionMatrix, &glState.currentProjectionMatrix);
+						Matrix4Multiply(&glState.currentProjectionMatrix, &glState.currentModelViewMatrix, &glState.currentModelViewProjectionMatrix);
 					}
 
 					qglDepthRange (0, 1);
@@ -1109,9 +1109,9 @@ void RB_RenderDrawSurfList( drawSurf_t *drawSurfs, int numDrawSurfs ) {
 	}
 
 	// go back to the world modelview matrix
-	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix );
-	Matrix4Copy(backEnd.viewParms.world.modelMatrix, glState.currentModelViewMatrix);
-	Matrix4Multiply(glState.currentProjectionMatrix, glState.currentModelViewMatrix, glState.currentModelViewProjectionMatrix);
+	qglLoadMatrixf( backEnd.viewParms.world.modelMatrix.d );
+	Matrix4Copy(&backEnd.viewParms.world.modelMatrix, &glState.currentModelViewMatrix);
+	Matrix4Multiply(&glState.currentProjectionMatrix, &glState.currentModelViewMatrix, &glState.currentModelViewProjectionMatrix);
 	if ( depthRange ) {
 		qglDepthRange (0, 1);
 	}
@@ -1167,9 +1167,9 @@ void	RB_SetGL2D (void) {
     qglLoadIdentity ();
 
 
-    qglGetFloatv(GL_PROJECTION_MATRIX, glState.currentProjectionMatrix);
-    qglGetFloatv(GL_MODELVIEW_MATRIX, glState.currentModelViewMatrix);
-    Matrix4Multiply(glState.currentProjectionMatrix, glState.currentModelViewMatrix, glState.currentModelViewProjectionMatrix);
+    qglGetFloatv(GL_PROJECTION_MATRIX, glState.currentProjectionMatrix.d);
+    qglGetFloatv(GL_MODELVIEW_MATRIX, glState.currentModelViewMatrix.d);
+    Matrix4Multiply(&glState.currentProjectionMatrix, &glState.currentModelViewMatrix, &glState.currentModelViewProjectionMatrix);
 	GL_State( GLS_DEPTHTEST_DISABLE |
 			  GLS_SRCBLEND_SRC_ALPHA |
 			  GLS_DSTBLEND_ONE_MINUS_SRC_ALPHA );
