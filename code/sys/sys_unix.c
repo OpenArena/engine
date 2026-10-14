@@ -161,11 +161,8 @@ static void CreateXDGPathAndMisc( void ) {
 			Com_Printf("Failed to create symbolic link \"%s\". Error code: %d. This is quite bad.", homeXdg, errCode);
 		}
 	}
-	if (!Sys_IsDir(homeXdg)) {
-		int errCode = Sys_Mkdir(homeXdg);
-		if (errCode) {
-			Com_Printf("Failed to create \"%s\". Error code: %d. This is quite bad.", homeXdg, errCode);
-		}
+	if (!Sys_Mkdir(homeXdg)) {
+		Com_Printf("Failed to create \"%s\". Error code: %d. This is quite bad.", homeXdg, errno);
 	}
 	if (Sys_IsDir(homeXdg) && !Sys_IsDir(homeClassic)) {
 		int errCode = symlink(homeXdg, homeClassic);
