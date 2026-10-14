@@ -243,27 +243,6 @@ void R_TransformClipToWindow( const vec4_t clip, const viewParms_t *view, vec4_t
 	window[1] = (int) ( window[1] + 0.5 );
 }
 
-
-/*
-==========================
-myGlMultMatrix
-
-==========================
-*/
-static void myGlMultMatrix( const mat4_t *a, const mat4_t *b, mat4_t *out ) {
-	int		i, j;
-
-	for ( i = 0 ; i < 4 ; i++ ) {
-		for ( j = 0 ; j < 4 ; j++ ) {
-			out->d[ i * 4 + j ] =
-				a->d [ i * 4 + 0 ] * b->d [ 0 * 4 + j ]
-				+ a->d [ i * 4 + 1 ] * b->d [ 1 * 4 + j ]
-				+ a->d [ i * 4 + 2 ] * b->d [ 2 * 4 + j ]
-				+ a->d [ i * 4 + 3 ] * b->d [ 3 * 4 + j ];
-		}
-	}
-}
-
 /*
 =================
 R_RotateForEntity
@@ -310,7 +289,7 @@ void R_RotateForEntity( const trRefEntity_t *ent, const viewParms_t *viewParms,
 	glMatrix.d[11] = 0;
 	glMatrix.d[15] = 1;
 
-	myGlMultMatrix( &glMatrix, &viewParms->world.modelMatrix, &or->modelMatrix );
+	Matrix4Multiply( &viewParms->world.modelMatrix, &glMatrix, &or->modelMatrix );
 
 	// calculate the viewer origin in the model's space
 	// needed for fog, specular, and environment mapping
@@ -376,7 +355,7 @@ void R_RotateForViewer (void)
 
 	// convert from our coordinate system (looking down X)
 	// to OpenGL's coordinate system (looking down -Z)
-	myGlMultMatrix( &viewerMatrix, &s_flipMatrix, &tr.or.modelMatrix );
+	Matrix4Multiply( &s_flipMatrix, &viewerMatrix, &tr.or.modelMatrix );
 
 	tr.viewParms.world = tr.or;
 
