@@ -344,7 +344,7 @@ void RE_AddRippleToScene( const vec3_t org, float intensity ) {
 
 	r = &backEndData->ripples[r_numripples++];
 
-	while (r->amp >= 0.02f){ // next....
+	while (r->amp >= 0.002f){ // next....
 		if (r_numripples < 0)
 			return; // dont!!!
 		if (r_numripples >= 96)
@@ -430,6 +430,10 @@ void RE_RenderScene( const refdef_t *fd ) {
 	}
 
 	Com_Memcpy( tr.refdef.text, fd->text, sizeof( tr.refdef.text ) );
+
+	// leilei - test the deformvertexes text0-8 shader
+	//Q_strncpyz( tr.refdef.text[0], "Park Ranger", sizeof(tr.refdef.text[0]) );
+	//Q_strncpyz( tr.refdef.text[1], "19", sizeof(tr.refdef.text[1]) );
 
 	tr.refdef.x = fd->x;
 	tr.refdef.y = fd->y;

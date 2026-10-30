@@ -132,6 +132,7 @@ typedef enum {
 
 int	softwaremode;	// leilei - detect for software mode
 int	voodootype;	// leilei - detect for voodoo revision
+int	pvrtype;	// leilei - detect for powervr revision
 char	extensions_string_full [BIG_INFO_STRING]; // leilei - gl extensions crash workaround
 
 /** From renderer_opengl2 (v28) */
@@ -428,9 +429,25 @@ void GLimp_InitExtraExtensions()
 	{
 		glConfig.hardwareType = GLHW_PERMEDIA2;
 	}
-	else if ( strstr( buf, "powervr" ) )
+	else if ( strstr( buf, "pcx1" ) )
 	{
-	//	glConfig.hardwareType = GLHW_PCX2;
+		pvrtype = 1;
+		ri.Printf( PRINT_ALL, "PowerVR PCX1 assumed\n" );
+	}
+	else if ( strstr( buf, "powervr pcx2" ) ||  strstr( buf, "pcx2" ) ||  strstr( buf, "PowerVR PCX2" ) 	)
+	{
+		pvrtype = 2;
+		ri.Printf( PRINT_ALL, "PowerVR PCX2 assumed\n" );
+	}
+	else if ( strstr( buf, "powervr neon" ) )
+	{
+		pvrtype = 3;
+		ri.Printf( PRINT_ALL, "PowerVR PMX1 assumed\n" );
+	}
+	else if ( strstr( buf, "kyro" ) )
+	{
+		pvrtype = 4;
+		ri.Printf( PRINT_ALL, "PowerVR KYRO assumed\n" );
 	}
 	else if ( strstr( buf, "brian" ) ||  strstr( buf, "paul" ) ||  strstr( buf, "GDI" ) )	 // software mode opengl needs speedup tricks
 	{

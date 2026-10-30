@@ -576,6 +576,7 @@ void R_SetupProjectionZ(viewParms_t *dest)
 	
 	zNear	= r_znear->value;
 	zFar	= dest->zFar;	
+	if (fix_pvr) zFar = 32768; // leilei - to fix the sky. PVR1 lacks depth and avoids overdraw anyway
 	depth	= zFar - zNear;
 
 	dest->projectionMatrix[2] = 0;

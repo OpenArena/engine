@@ -110,6 +110,7 @@ cvar_t	*r_loadDDS;			// leilei - loading DDS textures
 cvar_t	*r_ext_paletted_texture;	// leilei - Paletted Texture
 cvar_t	*r_ext_gamma_control;		// leilei - 3dfx gamma control
 cvar_t	*r_postprocess;
+cvar_t	*r_forcePvrFix;			// leilei - debug
 
 cvar_t	*r_ignoreGLErrors;
 cvar_t	*r_logFile;
@@ -1167,6 +1168,8 @@ void R_Register( void )
 	r_loadDDS = ri.Cvar_Get( "r_loadDDS", "1", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - compressed texture support
 	r_ext_paletted_texture = ri.Cvar_Get( "r_ext_paletted_texture", "0", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - paletted texture support
 	r_ext_gamma_control = ri.Cvar_Get( "r_ext_gamma_control", "1", CVAR_ARCHIVE | CVAR_LATCH );	// leilei - 3dfx gamma support
+
+	r_forcePvrFix = ri.Cvar_Get ("r_forcePvrFix", "0", CVAR_LATCH|CVAR_CHEAT ); // leilei - debug
 
 	r_postprocess = ri.Cvar_Get( "r_postprocess", "none", CVAR_ARCHIVE|CVAR_LATCH );
 	r_ext_vertex_shader = ri.Cvar_Get( "r_ext_vertex_shader", "0", CVAR_ARCHIVE|CVAR_LATCH );

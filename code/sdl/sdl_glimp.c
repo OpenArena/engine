@@ -74,6 +74,7 @@ cvar_t *r_allowResize; // make window resizable
 cvar_t *r_conMode; // leilei - console mode - force native resolutions of various consoles
 cvar_t *r_centerWindow;
 cvar_t *r_sdlDriver;
+extern cvar_t *r_forcePvrFix;
 
 void (APIENTRYP qglActiveTextureARB) (GLenum texture);
 void (APIENTRYP qglClientActiveTextureARB) (GLenum texture);
@@ -279,12 +280,13 @@ static int GLimp_SetMode(int mode, qboolean fullscreen, qboolean noborder)
 #endif
 
 	ri.Printf( PRINT_ALL, "Initializing OpenGL display\n");
-
+#ifdef BROKEN
 	if ( r_allowResize->integer )
 #if SDL_MAJOR_VERSION == 2
 		flags |= SDL_WINDOW_RESIZABLE;
 #else
 		flags |= SDL_RESIZABLE;
+#endif
 #endif
 
 #if SDL_MAJOR_VERSION == 2
@@ -966,6 +968,20 @@ success:
 		glConfig.renderer_string[strlen(glConfig.renderer_string) - 1] = 0;
 	Q_strncpyz( glConfig.version_string, (char *) qglGetString (GL_VERSION), sizeof( glConfig.version_string ) );
 	Q_strncpyz( glConfig.extensions_string, (char *) qglGetString (GL_EXTENSIONS), sizeof( glConfig.extensions_string ) );
+
+#ifdef _WIN32
+	// leilei - do fallback fixes
+	fix_pvr = 0;
+	if ( strstr( glConfig.renderer_string, "PowerVR PCX" ) || r_forcePvrFix->integer )
+	{
+		fix_pvr = 1;
+		ri.Cvar_Set( "videoflags", 	"0" );	// allow vertexlighting
+		ri.Cvar_Set( "r_vertexlight", 	"1" );  // lightmaps cannot blend
+		ri.Cvar_Set( "r_noportals", 	"1" );	// portals can't be cut
+		ri.Cvar_Set( "cg_marks", 	"0" );	// too many of these in one place can cause a crash
+		ri.Printf( PRINT_ALL, "@@@@@ PowerVR PCX1/PCX2 DETECTED - Trying to fix @@@@@\n" );
+	}
+#endif
 
 	// initialize extensions
 	GLimp_InitExtensions( );

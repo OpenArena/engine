@@ -1058,6 +1058,8 @@ static void Upload32( unsigned *data,
 	int		texsizex, texsizey;
 	int		forceBits = 0; 
 
+	// leilei - PCX2 drivers always seem to generate mipmaps regardless, so let's just not do it here to save loading time/memory
+	if (fix_pvr==1) mipmap = 0;
 
 	//
 	// convert to exact power of 2 sizes
@@ -1327,6 +1329,17 @@ static void Upload32( unsigned *data,
 
 				}
 
+	}
+	//
+	// leilei - powervr alpha strengthening
+	//	
+	if (fix_pvr)
+	{
+		for ( i = 0; i < c; i++ )
+		{
+			int alfa = (pow(scan[i*4 + 3]/255.0f,0.5f))*255.0f;
+			scan[i*4 + 3] 	= alfa;
+		}	
 	}
 
 	// texturdither was here, will return properly someday.

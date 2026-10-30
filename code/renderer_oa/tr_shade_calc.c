@@ -109,7 +109,7 @@ void RB_CalcStretchTexCoords( const waveForm_t *wf, float *st )
 }
 
 /*
-** leilei - RB_CalcWaveCoords - simply transform using waves. uber-inspired
+** leilei - RB_CalcWaveCoords - simply transform using waves. 007-inspired
 */
 void RB_CalcWaveCoords( const waveForm_t *wf, float *st, int x, int y )
 {
@@ -158,6 +158,26 @@ void RB_CalcWaveRotateCoords( const waveForm_t *wf, float *st )
 
 }
 
+/*
+** RB_CalcSwapCoords
+
+leilei - for tcmod swap, probably useful for DXT formats
+*/
+void RB_CalcSwapCoords( float *st )
+{
+	float p;
+	texModInfo_t tmi;
+
+	tmi.matrix[0][0] = 1;
+	tmi.matrix[1][0] = 0;
+	tmi.translate[0] = 0;
+
+	tmi.matrix[0][1] = 0;
+	tmi.matrix[1][1] = -1;
+	tmi.translate[1] = 0;
+
+	RB_CalcTransformTexCoords( &tmi, st );
+}
 
 /*
 ====================================================================
@@ -332,7 +352,7 @@ RB_CalcBulgeVertexes
 
 ========================
 */
-void OldRB_CalcBulgeVertexes( deformStage_t *ds ) {
+void RB_CalcBulgeVertexes( deformStage_t *ds ) {
 	int i;
 	const float *st = ( const float * ) tess.texCoords[0];
 	float		*xyz = ( float * ) tess.xyz;
@@ -352,45 +372,6 @@ void OldRB_CalcBulgeVertexes( deformStage_t *ds ) {
 		xyz[0] += normal[0] * scale;
 		xyz[1] += normal[1] * scale;
 		xyz[2] += normal[2] * scale;
-	}
-}
-
-
-// leilei - adapted a bit from the jk2 source, for performance
-
-void RB_CalcBulgeVertexes( deformStage_t *ds ) {
-	int i;
-	float		*xyz = ( float * ) tess.xyz;
-	float		*normal = ( float * ) tess.normal;
-
-	if ( ds->bulgeSpeed == 0.0f && ds->bulgeWidth == 0.0f )
-	{
-		// We don't have a speed and width, so just use height to expand uniformly
-		for ( i = 0; i < tess.numVertexes; i++, xyz += 4, normal += 4 ) 
-		{
-			xyz[0] += normal[0] * ds->bulgeHeight;
-			xyz[1] += normal[1] * ds->bulgeHeight;
-			xyz[2] += normal[2] * ds->bulgeHeight;
-		}	
-	}
-	else
-	{
-		const float *st = ( const float * ) tess.texCoords[0];
-		float		now;
-	
-		now = backEnd.refdef.time * ds->bulgeSpeed * 0.001f;
-	for ( i = 0; i < tess.numVertexes; i++, xyz += 4, st += 4, normal += 4 ) {
-		int		off;
-		float scale;
-
-		off = (float)( FUNCTABLE_SIZE / (M_PI*2) ) * ( st[0] * ds->bulgeWidth + now );
-
-		scale = tr.sinTable[ off & FUNCTABLE_MASK ] * ds->bulgeHeight;
-			
-		xyz[0] += normal[0] * scale;
-		xyz[1] += normal[1] * scale;
-		xyz[2] += normal[2] * scale;
-	}
 	}
 }
 
@@ -543,7 +524,7 @@ void RB_CalcRippleVertexes( deformStage_t *ds )
 					float power = 1 * ( l->radius );
 					float d = VectorNormalize( cv );
 					power = power / ( d ); // Wrong?
-					offset[2] += clAmp * (sin(power));
+					offset[2] += clAmp * (sin(power*3)*3);
 				}
 			}
 
@@ -803,6 +784,28 @@ static void Autosprite3Deform( void ) {
 
 /*
 =====================
+CullDeform
+
+We just stop drawing after a distance
+=====================
+*/
+
+static void RB_CullDeform( deformStage_t *ds  ) {
+	float len;
+	vec3_t v;
+	VectorSubtract( backEnd.currentEntity->e.origin, backEnd.viewParms.or.origin, v );
+	len = VectorLength( v );
+	len /= ds->deformationWave.amplitude;
+	//ri.Printf( PRINT_WARNING, "RB_CullDeform: %f length\n", len );
+	if ( len > 1 )
+	{
+		tess.numVertexes = 0;	 // good bye!!!
+		tess.numIndexes = 0;
+	}
+}
+
+/*
+=====================
 TessDeform
 
 Makes new subdivided triangle surfaces
@@ -811,39 +814,149 @@ NOT YET DONE
 */
 /*
 static void TessDeform( void ) {
-	int		i;
-	int		oldVerts, oldInts;
-	float	*xyz;
-	float	*normal = ( float * ) tess.normal;
-	vec3_t	mid, delta;
-	float	radius;
-	vec3_t	left, up;
-	vec3_t	leftDir, upDir;
-	int ind=0;
-	vec3_t  a,b,c;
-	vec3_t  x,y,z;
-
-	oldVerts = tess.numVertexes;
-	oldInts = tess.numIndexes;
-	tess.numVertexes = 0;
-	tess.numIndexes = 0;
-	// TODO: Create 4 triangles per old triangle, where each triangle is
-	// connected to a midpoint of a new smoothed edge
-//         b                          b
-//        /\                         / \                                                            
-//       /  \                       /   \                                                           
-//      /    \       -------->    y/-----\z                                                         
-//     /      \                   /  \ /  \                                                         
-//   a/________\c               a/____V____\c                                 
-//                                    x
-//
- 
 
 
 
 }
 
 */
+
+
+// Spawn particles from the midpoint.
+
+static void RB_LFX_Test( void ) {
+	int		i;
+	int		oldVerts;
+	float	*xyz;
+	vec3_t	mid, delta;
+	float	radius;
+	vec3_t	left, up;
+	vec3_t	leftDir, upDir;
+
+	if ( tess.numVertexes & 3 ) {
+		ri.Printf( PRINT_WARNING, "Particle shader %s had odd vertex count\n", tess.shader->name );
+	}
+	if ( tess.numIndexes != ( tess.numVertexes >> 2 ) * 6 ) {
+		ri.Printf( PRINT_WARNING, "Particle shader %s had odd index count\n", tess.shader->name );
+	}
+
+	oldVerts = tess.numVertexes;
+
+	if ( backEnd.currentEntity != &tr.worldEntity ) {
+		GlobalVectorToLocal( backEnd.viewParms.or.axis[1], leftDir );
+		GlobalVectorToLocal( backEnd.viewParms.or.axis[2], upDir );
+	} else {
+		VectorCopy( backEnd.viewParms.or.axis[1], leftDir );
+		VectorCopy( backEnd.viewParms.or.axis[2], upDir );
+	}
+
+	for ( i = 0 ; i < oldVerts ; i+=4 ) {
+		// find the midpoint
+		xyz = tess.xyz[i];
+
+		mid[0] = 0.25f * (xyz[0] + xyz[4] + xyz[8] + xyz[12]);
+		mid[1] = 0.25f * (xyz[1] + xyz[5] + xyz[9] + xyz[13]);
+		mid[2] = 0.25f * (xyz[2] + xyz[6] + xyz[10] + xyz[14]);
+
+		VectorSubtract( xyz, mid, delta );
+		radius = VectorLength( delta ) * 0.707f;		// / sqrt(2)
+
+		VectorScale( leftDir, radius, left );
+		VectorScale( upDir, radius, up );
+
+		if ( backEnd.viewParms.isMirror ) {
+			VectorSubtract( vec3_origin, left, left );
+		}
+
+
+	vec4_t blah;
+		blah[0]=0.4f;
+		blah[1]=1.0f;
+		blah[2]=1.0f;
+		blah[3]=1.0f;
+		// Spew
+		if (random() < 0.1f)
+			R_LFX_Spark (left, leftDir, 1.0, 1, blah, blah, blah, blah, blah, 12, 5550, 1, 1);
+
+	  // compensate for scale in the axes if necessary
+  	if ( backEnd.currentEntity->e.nonNormalizedAxes ) {
+      float axisLength;
+		  axisLength = VectorLength( backEnd.currentEntity->e.axis[0] );
+  		if ( !axisLength ) {
+	  		axisLength = 0;
+  		} else {
+	  		axisLength = 1.0f / axisLength;
+  		}
+      VectorScale(left, axisLength, left);
+      VectorScale(up, axisLength, up);
+    }
+
+	}
+}
+
+
+void RB_LFXTest( deformStage_t *ds )
+{
+	int i;
+	float timstep;
+	vec3_t	offset;
+	vec3_t	sprOrg, sprVel, dir;
+	float	*xyz = ( float * ) tess.xyz;
+	float	*normal = ( float * ) tess.normal;
+	float	*colors = ( float * ) tess.vertexColors;
+	vec3_t upn = {0, 0, 1};
+	float itsup;
+	float bottom, top;
+	int f;
+	timstep = sin(tess.shaderTime*64);
+	if (timstep >= 0.1) return;
+//	if (random() > 0.74f) return; // try to limit
+	vec3_t cv, mid;
+	{
+		vec4_t blah, blah2, blah3, blah4, blah5;
+		blah[0]=0.4f;	// rgba color
+		blah[1]=0.4f;
+		blah[2]=0.5f;
+		blah[3]=1.0f;
+		VectorScale(blah, 0.4, blah2);
+		VectorScale(blah2, 0.3, blah3);
+		VectorScale(blah3, 0.2, blah4);
+		VectorScale(blah4, 0.1, blah5);
+
+		for ( i = 0; i < tess.numIndexes; i++, xyz += 4, normal += 4 )
+		{
+			offset[0] = 0;
+			offset[1] = 0;
+			offset[2] = 16;
+		//itsup = normal[0]*upn[0] + normal[1]*upn[1] + normal[2]*upn[2];
+		itsup = normal[2];
+		//if (itsup<0.9) continue;
+	//	sprOrg[0] = DotProduct (backEnd.currentEntity->e.axis[0], xyz);
+	//	sprOrg[1] = DotProduct (backEnd.currentEntity->e.axis[1], xyz);
+	//	sprOrg[2] = DotProduct (backEnd.currentEntity->e.axis[2], xyz);
+		sprOrg[1] = backEnd.currentEntity->e.origin[1] + xyz[1];
+		sprOrg[2] = backEnd.currentEntity->e.origin[2] + xyz[2];
+		sprOrg[0] = backEnd.currentEntity->e.origin[0] + xyz[0];
+//		sprOrg[0] = DotProduct (backEnd.currentEntity->e.axis[0], xyz);
+//		sprOrg[1] = DotProduct (backEnd.currentEntity->e.axis[1], xyz);
+//		sprOrg[2] = DotProduct (backEnd.currentEntity->e.axis[2], xyz);
+		//sprOrg[1] = backEnd.currentEntity->e.origin[1] + xyz[1];
+	//	sprOrg[2] = backEnd.currentEntity->e.origin[2] + xyz[2];
+		//VectorSubtract (xyz, backEnd.currentEntity->e.axis[0], sprOrg);
+	//	VectorMA(sprOrg, 1.0, backEnd.currentEntity->e.axis[0], sprOrg);
+		if ((itsup>0.7f) && (random() > 0.99f)){  // Debug Splash
+			//R_LFX_Burst (sprOrg, offset, 22, 266, blah, blah, blah, blah, blah, 1, 1900, 5, 7);
+			//R_LFX_Burst (sprOrg, offset, 11, 266, blah, blah2, blah3, blah4, blah5, 1, 120, 2, 1);
+			if (random() < 0.2)
+			R_LFX_Burst (sprOrg, offset, 1, 166, blah, blah2, blah3, blah4, blah5, 1, 120, 2,7);
+
+			//R_LFX_Spark (sprOrg, offset, 134, 4, blah, blah2, blah3, blah4, blah5, 7, 136, 0.12f, 1);
+
+			}
+		}
+	}
+}
+
 
 /*
 =====================
@@ -854,6 +967,11 @@ RB_DeformTessGeometry
 void RB_DeformTessGeometry( void ) {
 	int		i;
 	deformStage_t	*ds;
+
+//	if ( tess.fogNum  && tess.shader->fogPass >= FP_EQUAL && tess.shader->fogParms.fx == 1 ){ 
+//			// leilei - rain hack
+//			RB_LFXTest( ds );
+//			}
 
 	for ( i = 0 ; i < tess.shader->numDeforms ; i++ ) {
 		ds = &tess.shader->deforms[ i ];
@@ -885,6 +1003,9 @@ void RB_DeformTessGeometry( void ) {
 			case DEFORM_AUTOSPRITE3:
 				Autosprite3Deform();
 				break;
+			case DEFORM_CULL:
+				RB_CullDeform( ds );
+				break;
 	//		case DEFORM_TESS:
 	//			TessDeform();
 	//			break;
@@ -900,6 +1021,9 @@ void RB_DeformTessGeometry( void ) {
 				break;
 			case DEFORM_RIPPLE:
 				RB_CalcRippleVertexes( ds );
+				break;
+			case DEFORM_LFX:
+				RB_LFXTest( ds );
 				break;
 			default:
 				break;
@@ -1294,7 +1418,6 @@ void RB_CalcEnvironmentTexCoordsNew( float *st )
 	}
 }
 
-
 /*
 ** RB_CalcEnvironmentTexCoordsEx
   
@@ -1529,6 +1652,32 @@ void RB_CalcOffsetTexCoords( const float scrollSpeed[2], float *st )
 	{
 		st[0] += scrollSpeed[0];
 		st[1] += scrollSpeed[1];
+	}
+}
+
+/*
+** leilei - RB_CalcParallaxCoords
+	scrolling with the guidance of the player view. uber inspired
+*/
+void RB_CalcParallaxCoords( const float scrollSpeed[2], float *st )
+{
+	int i;
+	float ex, ey;
+	vec3_t	viewer;
+	VectorCopy (backEnd.or.viewOrigin, viewer);
+	VectorNormalizeFast (viewer);
+
+	viewer[0] *= 128;
+	viewer[1] *= 128;
+	viewer[2] *= 256;
+
+	ex = (viewer[0]+viewer[1]) * scrollSpeed[0];
+	ey = viewer[2] * scrollSpeed[1];
+
+	for ( i = 0; i < tess.numVertexes; i++, st += 2 )
+	{
+		st[0] += ex;
+		st[1] += ey;
 	}
 }
 
@@ -2077,16 +2226,6 @@ void RB_CalcDiffuseColor( unsigned char *colors )
 	{
 		RB_CalcDiffuseColor_flat( colors );
 	}
-/*
-	else if (r_shadeMethod->integer == -3)			// Faster?
-	{
-		RB_CalcDiffuseColor_quicker( colors );
-	}
-	else if (r_shadeMethod->integer == -4)			// Fasterer?
-	{
-		RB_CalcDiffuseColor_quickerer( colors );
-	}
-*/
 	else if (r_shadeMethod->integer == 2)			// mimic UE1 style
 	{
 		RB_CalcMaterials( colors, 0xFFFFFF, 0x000000, 0xFFFFFF, 0x000000, 128, 255 );

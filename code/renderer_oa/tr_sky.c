@@ -314,6 +314,10 @@ static void MakeSkyVec( float s, float t, int axis, float outSt[2], vec3_t outXY
 
 	boxSize = backEnd.viewParms.zFar / 1.75;		// div sqrt(3)
 
+	// leilei - hack to make the sky not so short-ranged on PVR1
+	if (fix_pvr)
+		boxSize = backEnd.viewParms.zFar;
+
 	b[0] = s*boxSize;
 	b[1] = t*boxSize;
 	b[2] = boxSize;

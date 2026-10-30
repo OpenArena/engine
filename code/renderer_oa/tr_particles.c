@@ -2722,7 +2722,7 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		R_LFX_Burst (sprOrg, sprVel, 175, 15, colory, colory2, colory3, colory4, colory4, 15, 240, 22, 1);
 		//R_LFX_Dlight (sprOrg, sprVel, 4000, 1, colory, colory2, colory3, colory4, colory4, 4, 50, 2, 1);
 		R_LFX_Spark (sprOrg, sprVel, 175, 5, colory, colory2, colory3, colory4, colory4, 25, 1240, 0.8f, 1);
-		RE_AddRippleToScene( origin, 300 );
+		RE_AddRippleToScene( origin, 70 );
 	}
 
 	// BFG
@@ -2779,7 +2779,7 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		//R_LFX_Dlight (sprOrg, sprVel, 8366, 2, colory, colory2, colory3, colory4, colory4, 4, 50, 2, 1);
 		R_LFX_Spark (sprOrg, sprVel, 175, 5, colory, colory2, colory3, colory4, colory4, 15, 1040, 0.8f, 1);
 		//R_LFX_Dlight (sprOrg, sprVel, 4000, 1, colory, colory2, colory3, colory4, colory4, 4, 50, 2, 1);
-		RE_AddRippleToScene( origin, 300 );
+		RE_AddRippleToScene( origin, 70 );
 	}
 
 	// Nail Hit
@@ -2820,7 +2820,7 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		colory4[1] = 0.0;
 		colory4[2] = 0.0;
 		colory4[3] = 0.0;
-		RE_AddRippleToScene( origin, 64 );
+		RE_AddRippleToScene( origin, 14 );
 		VectorMA( origin, 4, dir, sprOrg );
 		VectorScale( dir, 1, sprVel );
 
@@ -2951,7 +2951,7 @@ void LFX_ParticleEffect200X (int effect, const vec3_t org, const vec3_t dir)
 		colory4[2] = 0.0;
 		colory4[3] = 0.0;
 		VectorScale( dir, 39, sprVel );
-		RE_AddRippleToScene( origin, 64 );
+		RE_AddRippleToScene( origin, 14 );
 
 		R_LFX_Shock (origin, dir, 0, 0, colory, colory2, colory3, colory4, colory4, 1, 800, 80,14);
 		R_LFX_Burst (sprOrg, sprVel, 22, 266, colory, colory2, colory3, colory4, colory4, 1, 1900, 5, 7);

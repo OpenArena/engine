@@ -1263,6 +1263,11 @@ static void ComputeTexCoords( shaderStage_t *pStage ) {
 										 ( float * ) tess.svars.texcoords[b] );
 				break;
 			case TMOD_PARALLAX:
+				RB_CalcParallaxCoords( pStage->bundle[b].texMods[tm].scroll,
+										 ( float * ) tess.svars.texcoords[b] );
+				break;
+			case TMOD_SWAP:
+				RB_CalcSwapCoords( ( float * ) tess.svars.texcoords[b] );
 				break;
 
 			default:

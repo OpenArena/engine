@@ -26,7 +26,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 #define MAX_VERTS_ON_POLY		64
 
-#define MARKER_OFFSET			0	// 1
+#define OLDMARKER_OFFSET			0	// 1
+float MARKER_OFFSET = 0;	// leilei - moved to an int, so we can fix marks on other hardware
 
 /*
 =============
@@ -275,6 +276,10 @@ int R_MarkFragments( int numPoints, const vec3_t *points, const vec3_t projectio
 	if (numPoints <= 0) {
 		return 0;
 	}
+
+	// leilei - if we're using PVR1, bump this up so marks don't flash and flicker (no glPolygonOffset on PVR1)
+	if (fix_pvr)
+		MARKER_OFFSET = 0.04f;
 
 	//increment view count for double check prevention
 	tr.viewCount++;

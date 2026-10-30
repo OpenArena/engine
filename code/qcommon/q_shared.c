@@ -23,6 +23,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 // q_shared.c -- stateless support routines that are included in each code dll
 #include "q_shared.h"
 
+// leilei - for parseext shader fixing for 96-97 3d cards
+int fix_pvr; 	// blend fixing (pvr/s3/matrox) ah
+int fix_rage;	// alpha modulation fixing (ati/s
+
 float Com_Clamp( float min, float max, float value ) {
 	if ( value < min ) {
 		return min;
@@ -381,7 +385,21 @@ int COM_Compress( char *data_p ) {
 				in+=6;
 				c = *in; if (c==0 || *in == '\n') break;
 			}
+#ifdef _WIN32
+		// leilei - if we're powervr1, parse stuff after //PVR1 commented lines
+			if (fix_pvr)
+			if ( c == '/' && in[1] == '/' && in[2]=='P' && in[3]=='V' && in[4]=='R' && in[5]=='1') {
+				in+=6;
+				c = *in; if (c==0 || *in == '\n') break;
+			}
 
+		// leilei - do the same for rage/virge/mystique
+			if (fix_rage)
+			if ( c == '/' && in[1] == '/' && in[2]=='R' && in[3]=='A' && in[4]=='G' && in[5]=='E') {
+				in+=6;
+				c = *in; if (c==0 || *in == '\n') break;
+			}
+#endif
 			// skip double slash comments
 			if ( c == '/' && in[1] == '/' ) {
 				while (*in && *in != '\n') {

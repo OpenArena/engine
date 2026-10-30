@@ -1419,6 +1419,37 @@ static void ParseTexMod( char *_text, shaderStage_t *stage )
 		tmi->scroll[1] = atof( token );
 		tmi->type = TMOD_OFFSET;
 	}
+
+	//
+	// leilei - parallax
+	//
+	else if ( !Q_stricmp( token, "parallax" ) )
+	{
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing parallax parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->scroll[0] = atof( token );
+
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing parallax parms in shader '%s'\n", shader.name );
+			return;
+		}
+		tmi->scroll[1] = atof( token );
+		tmi->type = TMOD_PARALLAX;
+	}
+	//
+	// leilei - swap
+	//
+	else if ( !Q_stricmp( token, "swap" ) )
+	{
+		tmi->type = TMOD_SWAP;
+	}
+
 	//
 	// entityTranslate
 	//
@@ -1481,7 +1512,7 @@ static int ShParseNum (const char *str)
 ParseStage
 ===================
 */
-
+extern	int		hackoperation; // leilei - for processing textures differently
 
 
 static qboolean ParseStage( shaderStage_t *stage, char **text )
@@ -1494,7 +1525,7 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 	int numFragmentObjects = 0;
 	int depthMaskBits = GLS_DEPTHMASK_TRUE, blendSrcBits = 0, blendDstBits = 0, atestBits = 0, depthFuncBits = 0;
 	qboolean depthMaskExplicit = qfalse;
-
+	hackoperation = 0; // reset
 	qboolean stageMipmaps = !shader.noMipMaps;
 
 	stage->active = qtrue;
@@ -2300,17 +2331,32 @@ static qboolean ParseStage( shaderStage_t *stage, char **text )
 
 			continue;
 		}
-
+		// leilei - hackoperations for fixing blending stuff
+		else if ( !Q_stricmp( token, "rgbtoalpha" ) )
+		{
+			hackoperation = 1;
+			continue;
+		}
+		else if ( !Q_stricmp( token, "killalpha" ) )
+		{
+			hackoperation = 2;
+			continue;
+		}
+		else if ( !Q_stricmp( token, "rgbtoalphasub" ) )
+		{
+			hackoperation = 3;
+			continue;
+		}
+		else if ( !Q_stricmp( token, "rgbtoalphamod" ) )
+		{
+			hackoperation = 4;
+			continue;
+		}
 		else
 		{
 			ri.Printf( PRINT_WARNING, "WARNING: unknown parameter '%s' in shader '%s'\n", token, shader.name );
 			return qfalse;
 		}
-
-
-
-
-	// END DITHER TEST
 	}
 
 	//
@@ -2577,6 +2623,22 @@ static void ParseDeform( char **text ) {
 		}
 		ds->deformationWave.amplitude = atof( token );
 
+
+		return;
+	}
+
+	// leilei - particle spewing
+	if ( !Q_stricmp( token, "particle" ) )
+	{
+		ds->deformation = DEFORM_LFX;
+		// amplitude is range
+		token = COM_ParseExt( text, qfalse );
+		if ( token[0] == 0 )
+		{
+			ri.Printf( PRINT_WARNING, "WARNING: missing deformVertexes parm in shader '%s'\n", shader.name );
+			return;
+		}
+		ds->deformationWave.amplitude = atof( token );
 
 		return;
 	}
@@ -2977,6 +3039,13 @@ static qboolean ParseShader( char **text )
 				continue;
 			}
 			shader.fogParms.depthForOpaque = atof( token );
+
+			if ( !Q_stricmp( token, "rain" ) || !Q_stricmp( token, "shower" ) || !Q_stricmp( token, "rainon" ) )
+			{
+				shader.fogParms.fx = 1;
+				ri.Printf( PRINT_WARNING, "WE GOT RAIN! '%s'\n", shader.name );
+				continue;
+			}
 
 			// skip any old gradient directions
 			SkipRestOfLine( text );

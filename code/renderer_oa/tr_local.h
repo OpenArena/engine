@@ -327,7 +327,8 @@ typedef enum {
 	TMOD_WAVES,
 	TMOD_WAVET,
 	TMOD_WAVER,
-	TMOD_PARALLAX
+	TMOD_PARALLAX,
+	TMOD_SWAP
 } texMod_t;
 
 // leilei - rgbMod - color modulations
@@ -446,7 +447,6 @@ typedef struct {
 	int			matEmis;		// leilei - material emissive
 	int			matHard;		// leilei - material specular hardness
 	int			matAlpha;		// leilei - material alpha
-
 } shaderStage_t;
 
 struct shaderCommands_s;
@@ -471,6 +471,7 @@ typedef struct {
 typedef struct {
 	vec3_t	color;
 	float	depthForOpaque;
+	int fx;	// leilei - fx. 0 = off, 1 = rain
 } fogParms_t;
 
 
@@ -2264,6 +2265,8 @@ void    RB_CalcMaterials( unsigned char *colors, int ambient, int diffuse, int s
 void	RB_CalcWaveCoords( const waveForm_t *wf, float *texCoords, int x, int y ); // leilei - waves wavet 
 void	RB_CalcWaveRotateCoords( const waveForm_t *wf, float *texCoords); 			// leilei - waver
 void	RB_CalcOffsetTexCoords( const float scroll[2], float *dstTexCoords );
+void	RB_CalcParallaxCoords( const float scroll[2], float *dstTexCoords );	// leilei - parallax
+void   	RB_CalcSwapCoords( float *st ); // leilei - swap
 
 void	RB_CalcVertLights( unsigned char *colors );	// leilei - dynamic vertex lights
 

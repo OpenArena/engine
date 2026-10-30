@@ -1402,6 +1402,9 @@ typedef enum _flag_status {
 	FLAG_DROPPED
 } flagStatus_t;
 
+// leilei - for parseext shader fixing for 96-97 3d cards
+extern int fix_pvr; 	// blend fixing (pvr/s3/matrox) ah
+extern int fix_rage;	// alpha modulation fixing (ati/s3/matrox)
 
 #define	MAX_GLOBAL_SERVERS				4096
 #define	MAX_OTHER_SERVERS					128
